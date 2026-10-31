@@ -398,5 +398,5 @@ that never arrive are ranked last.
 - Arrival order is β-sensitive — see the sensitivity tab for the window in which
   the Braak-like result holds
 """)
-        st.markdown("Source: [github.com/OluwatobaOyagbemi/connectome-spread]"
-                    "(https://github.com/OluwatobaOyagbemi/connectome-spread)")
+        st.markdown("[Project site](https://oluwatobaoyagbemi.github.io/connectome-spread) · "
+                    "[Source code](https://github.com/OluwatobaOyagbemi/connectome-spread)")
