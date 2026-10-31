@@ -3,7 +3,7 @@
 Interactive simulation of neurodegenerative pathology spreading along the brain's
 structural wiring, with APOE genotype as a tunable risk parameter.
 
-**Live demo:** _(add Streamlit Cloud link)_
+**Live demo:** https://connectome-spread.streamlit.app
 
 ## Question
 
