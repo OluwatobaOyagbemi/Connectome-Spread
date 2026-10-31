@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connectome Spread</title>
+<meta name="description" content="Interactive simulation of neurodegenerative pathology spreading along real brain wiring, with APOE genotype as a tunable risk parameter.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper:#eef2f6; --panel:#ffffff; --ink:#13213a; --ink-2:#4a5568; --ink-3:#7b8794;
+    --line:#d5dce5; --blue:#2a78d6; --blue-soft:#cfe0f7; --red:#e34948;
+  }
+  * { box-sizing:border-box }
+  html { scroll-behavior:smooth }
+  body { margin:0; background:var(--paper); color:var(--ink); font-family:"Instrument Sans",system-ui,sans-serif;
+         font-size:17px; line-height:1.55; -webkit-font-smoothing:antialiased }
+  a { color:var(--blue) }
+  a:focus-visible, button:focus-visible { outline:3px solid var(--blue); outline-offset:3px }
+  .wrap { max-width:1100px; margin:0 auto; padding:0 24px }
+  h1,h2,h3 { font-family:"Newsreader",Georgia,serif; font-weight:500; letter-spacing:-0.01em; line-height:1.1; margin:0 }
+  h1 { font-size:clamp(40px,6vw,66px) }
+  h2 { font-size:clamp(28px,3.6vw,40px); margin-bottom:18px }
+  h3 { font-size:22px; margin-bottom:8px }
+  p { margin:0 0 1em; max-width:62ch }
+  .muted { color:var(--ink-2) }
+
+  nav { display:flex; align-items:center; justify-content:space-between; padding:22px 0 }
+  nav .brand { font-family:"Newsreader",serif; font-size:22px; color:var(--ink); text-decoration:none }
+  nav .links a { color:var(--ink-2); text-decoration:none; margin-left:22px; font-weight:500 }
+  nav .links a:hover { color:var(--ink) }
+
+  .hero { display:grid; grid-template-columns:1.05fr 1.3fr; gap:40px; align-items:center; padding:36px 0 56px }
+  .hero p.lede { font-size:20px; color:var(--ink-2); margin:22px 0 28px }
+  .cta { display:inline-block; background:var(--ink); color:#fff; text-decoration:none; padding:14px 22px; border-radius:8px; font-weight:600 }
+  .cta:hover { background:#0e1a2e }
+  .cta.secondary { background:transparent; color:var(--ink); border:1.5px solid var(--ink); margin-left:10px }
+  .cta.secondary:hover { background:#fff }
+
+  .graph { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 10px 6px; position:relative }
+  .graph svg { width:100%; height:auto; display:block }
+  .graph .edges line { stroke:var(--ink) }
+  .graph .n { fill:var(--blue-soft); stroke:#fff; stroke-width:1.5 }
+  .graph .n.dim { fill:#e3e8ee }
+  .graph .n.lit { animation:arrive 0.9s ease-out forwards; animation-play-state:paused }
+  .graph.play .n.lit { animation-play-state:running }
+  @keyframes arrive { 0%{fill:var(--blue-soft)} 60%{fill:var(--red)} 100%{fill:var(--blue)} }
+  .graph .hemi { font-family:"Instrument Sans",sans-serif; font-size:12px; fill:var(--ink-3) }
+  .graph .cap { display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--ink-3); padding:8px 8px 4px }
+  .graph button { font:inherit; font-weight:500; color:var(--ink); background:transparent; border:1px solid var(--line); border-radius:6px; padding:5px 10px; cursor:pointer }
+  .graph button:hover { background:var(--paper) }
+  @media (prefers-reduced-motion: reduce) { .graph .n.lit { animation:none; fill:var(--blue) } .graph button { display:none } }
+
+  section { padding:52px 0; border-top:1px solid var(--line) }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:48px }
+  .result { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:28px 32px; display:grid; grid-template-columns:auto 1fr; gap:28px; align-items:center }
+  .result .num { font-family:"Newsreader",serif; font-size:84px; line-height:1; color:var(--blue) }
+  .result .num small { display:block; font-family:"Instrument Sans",sans-serif; font-size:14px; color:var(--ink-3); margin-top:6px }
+  table { border-collapse:collapse; width:100%; font-size:15px; margin-top:18px }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line) }
+  th { font-weight:600; color:var(--ink-2) }
+  td:not(:first-child), th:not(:first-child) { text-align:right; font-variant-numeric:tabular-nums }
+  .eq { font-family:"Newsreader",serif; font-size:30px; font-style:italic; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px 24px; margin:0 0 22px; display:inline-block }
+  .eq sub { font-size:0.6em }
+  dl { margin:0 } dt { font-weight:600; margin-top:14px } dd { margin:4px 0 0; color:var(--ink-2); max-width:58ch }
+  .sw { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:8px; vertical-align:-1px }
+  footer { padding:36px 0 56px; border-top:1px solid var(--line); color:var(--ink-2); font-size:15px }
+  footer a { color:var(--ink) }
+  @media (max-width:860px) { .hero,.two,.result { grid-template-columns:1fr } .hero { padding-top:12px } .result .num { font-size:64px } nav .links a { margin-left:14px } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="#">Connectome Spread</a>
+    <div class="links">
+      <a href="#result">Result</a><a href="#how">How it works</a><a href="#data">Data</a>
+      <a href="https://github.com/OluwatobaOyagbemi/connectome-spread">Code</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <h1>Watch disease travel the brain's wiring.</h1>
+      <p class="lede">A simulation of neurodegenerative pathology spreading along real human brain connections, with APOE genotype as a risk dial. Seed it, pick a genotype, and see where it goes first.</p>
+      <a class="cta" href="https://connectome-spread.streamlit.app">Open the simulator</a>
+      <a class="cta secondary" href="https://github.com/OluwatobaOyagbemi/connectome-spread">Read the code</a>
+    </div>
+    <div class="graph" id="graph">
+<svg viewBox="0 0 960 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="68 brain regions of the Desikan-Killiany atlas drawn from the HCP connectome; regions light up in simulated arrival order starting from both entorhinal cortices">
+<g class="edges">
+<line x1="429.8" y1="244.1" x2="530.2" y2="244.1" stroke-opacity="0.37" stroke-width="2.20"/>
+<line x1="129.2" y1="154.4" x2="115.3" y2="207.0" stroke-opacity="0.35" stroke-width="2.10"/>
+<line x1="830.8" y1="154.4" x2="844.7" y2="207.0" stroke-opacity="0.35" stroke-width="2.08"/>
+<line x1="181.1" y1="183.7" x2="395.4" y2="158.0" stroke-opacity="0.35" stroke-width="2.07"/>
+<line x1="778.9" y1="183.7" x2="564.6" y2="158.0" stroke-opacity="0.34" stroke-width="2.06"/>
+<line x1="913.5" y1="286.4" x2="929.0" y2="345.2" stroke-opacity="0.34" stroke-width="2.04"/>
+<line x1="46.5" y1="286.4" x2="31.0" y2="345.2" stroke-opacity="0.34" stroke-width="2.02"/>
+<line x1="607.4" y1="216.0" x2="530.2" y2="244.1" stroke-opacity="0.34" stroke-width="2.02"/>
+<line x1="352.6" y1="216.0" x2="429.8" y2="244.1" stroke-opacity="0.33" stroke-width="2.01"/>
+<line x1="352.6" y1="216.0" x2="395.4" y2="158.0" stroke-opacity="0.33" stroke-width="2.01"/>
+<line x1="181.1" y1="183.7" x2="219.3" y2="141.3" stroke-opacity="0.33" stroke-width="1.99"/>
+<line x1="830.8" y1="154.4" x2="693.9" y2="399.8" stroke-opacity="0.33" stroke-width="1.99"/>
+<line x1="115.3" y1="207.0" x2="219.3" y2="141.3" stroke-opacity="0.33" stroke-width="1.98"/>
+<line x1="607.4" y1="216.0" x2="564.6" y2="158.0" stroke-opacity="0.33" stroke-width="1.98"/>
+<line x1="129.2" y1="154.4" x2="266.1" y2="399.8" stroke-opacity="0.33" stroke-width="1.97"/>
+<line x1="747.3" y1="368.0" x2="855.5" y2="319.2" stroke-opacity="0.33" stroke-width="1.97"/>
+<line x1="212.7" y1="368.0" x2="104.5" y2="319.2" stroke-opacity="0.33" stroke-width="1.97"/>
+<line x1="771.3" y1="448.8" x2="693.9" y2="399.8" stroke-opacity="0.33" stroke-width="1.97"/>
+<line x1="893.0" y1="224.0" x2="929.0" y2="345.2" stroke-opacity="0.33" stroke-width="1.97"/>
+<line x1="671.5" y1="204.8" x2="812.5" y2="98.6" stroke-opacity="0.33" stroke-width="1.97"/>
+<line x1="564.6" y1="158.0" x2="530.2" y2="244.1" stroke-opacity="0.33" stroke-width="1.96"/>
+<line x1="395.4" y1="158.0" x2="429.8" y2="244.1" stroke-opacity="0.33" stroke-width="1.96"/>
+<line x1="778.9" y1="183.7" x2="740.7" y2="141.3" stroke-opacity="0.33" stroke-width="1.96"/>
+<line x1="188.7" y1="448.8" x2="266.1" y2="399.8" stroke-opacity="0.33" stroke-width="1.96"/>
+<line x1="308.5" y1="239.9" x2="429.8" y2="244.1" stroke-opacity="0.33" stroke-width="1.96"/>
+<line x1="288.5" y1="204.8" x2="147.5" y2="98.6" stroke-opacity="0.33" stroke-width="1.96"/>
+<line x1="343.3" y1="251.5" x2="616.7" y2="251.5" stroke-opacity="0.33" stroke-width="1.96"/>
+<line x1="651.5" y1="239.9" x2="530.2" y2="244.1" stroke-opacity="0.32" stroke-width="1.96"/>
+<line x1="830.8" y1="154.4" x2="740.7" y2="141.3" stroke-opacity="0.32" stroke-width="1.96"/>
+<line x1="129.2" y1="154.4" x2="104.5" y2="319.2" stroke-opacity="0.32" stroke-width="1.95"/>
+<line x1="729.5" y1="172.0" x2="530.2" y2="244.1" stroke-opacity="0.32" stroke-width="1.95"/>
+<line x1="747.3" y1="368.0" x2="771.3" y2="448.8" stroke-opacity="0.32" stroke-width="1.95"/>
+<line x1="212.7" y1="368.0" x2="188.7" y2="448.8" stroke-opacity="0.32" stroke-width="1.95"/>
+<line x1="572.4" y1="235.8" x2="730.9" y2="330.4" stroke-opacity="0.32" stroke-width="1.94"/>
+<line x1="855.5" y1="319.2" x2="844.7" y2="207.0" stroke-opacity="0.32" stroke-width="1.93"/>
+<line x1="778.9" y1="183.7" x2="844.7" y2="207.0" stroke-opacity="0.32" stroke-width="1.93"/>
+<line x1="352.6" y1="216.0" x2="308.5" y2="239.9" stroke-opacity="0.32" stroke-width="1.93"/>
+<line x1="67.0" y1="224.0" x2="31.0" y2="345.2" stroke-opacity="0.32" stroke-width="1.92"/>
+<line x1="830.8" y1="154.4" x2="855.5" y2="319.2" stroke-opacity="0.32" stroke-width="1.92"/>
+<line x1="844.7" y1="207.0" x2="740.7" y2="141.3" stroke-opacity="0.32" stroke-width="1.92"/>
+<line x1="778.9" y1="183.7" x2="730.9" y2="330.4" stroke-opacity="0.32" stroke-width="1.92"/>
+<line x1="607.4" y1="216.0" x2="651.5" y2="239.9" stroke-opacity="0.32" stroke-width="1.92"/>
+<line x1="352.6" y1="216.0" x2="413.3" y2="207.2" stroke-opacity="0.32" stroke-width="1.92"/>
+<line x1="231.9" y1="474.6" x2="219.3" y2="141.3" stroke-opacity="0.32" stroke-width="1.92"/>
+<line x1="266.1" y1="399.8" x2="231.9" y2="474.6" stroke-opacity="0.32" stroke-width="1.92"/>
+<line x1="212.7" y1="368.0" x2="67.0" y2="224.0" stroke-opacity="0.32" stroke-width="1.92"/>
+<line x1="115.3" y1="207.0" x2="844.7" y2="207.0" stroke-opacity="0.32" stroke-width="1.91"/>
+<line x1="181.1" y1="183.7" x2="229.1" y2="330.4" stroke-opacity="0.32" stroke-width="1.91"/>
+<line x1="308.5" y1="239.9" x2="530.2" y2="244.1" stroke-opacity="0.32" stroke-width="1.91"/>
+<line x1="812.5" y1="98.6" x2="844.7" y2="207.0" stroke-opacity="0.32" stroke-width="1.91"/>
+<line x1="129.2" y1="154.4" x2="219.3" y2="141.3" stroke-opacity="0.32" stroke-width="1.91"/>
+<line x1="387.6" y1="235.8" x2="229.1" y2="330.4" stroke-opacity="0.32" stroke-width="1.91"/>
+<line x1="104.5" y1="319.2" x2="115.3" y2="207.0" stroke-opacity="0.32" stroke-width="1.91"/>
+<line x1="728.1" y1="474.6" x2="730.9" y2="330.4" stroke-opacity="0.32" stroke-width="1.91"/>
+<line x1="616.7" y1="251.5" x2="709.0" y2="109.6" stroke-opacity="0.32" stroke-width="1.91"/>
+<line x1="308.5" y1="239.9" x2="651.5" y2="239.9" stroke-opacity="0.31" stroke-width="1.91"/>
+<line x1="395.4" y1="158.0" x2="564.6" y2="158.0" stroke-opacity="0.31" stroke-width="1.90"/>
+<line x1="230.5" y1="172.0" x2="429.8" y2="244.1" stroke-opacity="0.31" stroke-width="1.90"/>
+<line x1="231.9" y1="474.6" x2="229.1" y2="330.4" stroke-opacity="0.31" stroke-width="1.90"/>
+<line x1="713.7" y1="345.4" x2="730.9" y2="330.4" stroke-opacity="0.31" stroke-width="1.90"/>
+<line x1="607.4" y1="216.0" x2="546.7" y2="207.2" stroke-opacity="0.31" stroke-width="1.90"/>
+<line x1="387.6" y1="235.8" x2="365.0" y2="178.4" stroke-opacity="0.31" stroke-width="1.90"/>
+<line x1="365.0" y1="178.4" x2="215.0" y2="230.8" stroke-opacity="0.31" stroke-width="1.90"/>
+<line x1="577.6" y1="274.8" x2="651.5" y2="239.9" stroke-opacity="0.31" stroke-width="1.90"/>
+<line x1="693.9" y1="399.8" x2="728.1" y2="474.6" stroke-opacity="0.31" stroke-width="1.89"/>
+<line x1="181.1" y1="183.7" x2="115.3" y2="207.0" stroke-opacity="0.31" stroke-width="1.89"/>
+<line x1="855.5" y1="319.2" x2="893.0" y2="224.0" stroke-opacity="0.31" stroke-width="1.89"/>
+<line x1="913.5" y1="286.4" x2="844.7" y2="207.0" stroke-opacity="0.31" stroke-width="1.89"/>
+<line x1="572.4" y1="235.8" x2="595.0" y2="178.4" stroke-opacity="0.31" stroke-width="1.89"/>
+<line x1="46.5" y1="286.4" x2="115.3" y2="207.0" stroke-opacity="0.31" stroke-width="1.89"/>
+<line x1="395.4" y1="158.0" x2="229.1" y2="330.4" stroke-opacity="0.31" stroke-width="1.89"/>
+<line x1="413.3" y1="207.2" x2="429.8" y2="244.1" stroke-opacity="0.31" stroke-width="1.88"/>
+<line x1="747.3" y1="368.0" x2="893.0" y2="224.0" stroke-opacity="0.31" stroke-width="1.88"/>
+<line x1="595.0" y1="178.4" x2="745.0" y2="230.8" stroke-opacity="0.31" stroke-width="1.88"/>
+<line x1="830.8" y1="154.4" x2="771.3" y2="448.8" stroke-opacity="0.31" stroke-width="1.88"/>
+<line x1="572.4" y1="235.8" x2="635.0" y2="185.9" stroke-opacity="0.31" stroke-width="1.88"/>
+<line x1="199.0" y1="409.6" x2="266.1" y2="399.8" stroke-opacity="0.31" stroke-width="1.88"/>
+<line x1="546.7" y1="207.2" x2="530.2" y2="244.1" stroke-opacity="0.31" stroke-width="1.88"/>
+<line x1="104.5" y1="319.2" x2="67.0" y2="224.0" stroke-opacity="0.31" stroke-width="1.88"/>
+<line x1="413.3" y1="207.2" x2="229.1" y2="330.4" stroke-opacity="0.31" stroke-width="1.87"/>
+<line x1="382.4" y1="274.8" x2="308.5" y2="239.9" stroke-opacity="0.31" stroke-width="1.87"/>
+<line x1="413.3" y1="207.2" x2="395.4" y2="158.0" stroke-opacity="0.31" stroke-width="1.87"/>
+<line x1="429.8" y1="244.1" x2="651.5" y2="239.9" stroke-opacity="0.31" stroke-width="1.87"/>
+<line x1="266.1" y1="399.8" x2="219.3" y2="141.3" stroke-opacity="0.31" stroke-width="1.87"/>
+<line x1="740.7" y1="141.3" x2="730.9" y2="330.4" stroke-opacity="0.31" stroke-width="1.87"/>
+<line x1="564.6" y1="158.0" x2="730.9" y2="330.4" stroke-opacity="0.31" stroke-width="1.87"/>
+<line x1="246.3" y1="345.4" x2="229.1" y2="330.4" stroke-opacity="0.31" stroke-width="1.87"/>
+<line x1="546.7" y1="207.2" x2="730.9" y2="330.4" stroke-opacity="0.31" stroke-width="1.87"/>
+<line x1="745.0" y1="230.8" x2="530.2" y2="244.1" stroke-opacity="0.31" stroke-width="1.86"/>
+<line x1="147.5" y1="98.6" x2="429.8" y2="244.1" stroke-opacity="0.31" stroke-width="1.86"/>
+<line x1="147.5" y1="98.6" x2="812.5" y2="98.6" stroke-opacity="0.31" stroke-width="1.86"/>
+<line x1="546.7" y1="207.2" x2="564.6" y2="158.0" stroke-opacity="0.31" stroke-width="1.86"/>
+<line x1="365.0" y1="178.4" x2="595.0" y2="178.4" stroke-opacity="0.31" stroke-width="1.86"/>
+<line x1="709.0" y1="109.6" x2="812.5" y2="98.6" stroke-opacity="0.31" stroke-width="1.86"/>
+<line x1="343.3" y1="251.5" x2="395.4" y2="158.0" stroke-opacity="0.31" stroke-width="1.86"/>
+<line x1="231.9" y1="474.6" x2="150.3" y2="436.0" stroke-opacity="0.31" stroke-width="1.86"/>
+<line x1="387.6" y1="235.8" x2="325.0" y2="185.9" stroke-opacity="0.31" stroke-width="1.86"/>
+<line x1="147.5" y1="98.6" x2="115.3" y2="207.0" stroke-opacity="0.31" stroke-width="1.85"/>
+<line x1="616.7" y1="251.5" x2="564.6" y2="158.0" stroke-opacity="0.30" stroke-width="1.85"/>
+<line x1="215.0" y1="230.8" x2="429.8" y2="244.1" stroke-opacity="0.30" stroke-width="1.85"/>
+<line x1="728.1" y1="474.6" x2="809.7" y2="436.0" stroke-opacity="0.30" stroke-width="1.85"/>
+<line x1="913.5" y1="286.4" x2="893.0" y2="224.0" stroke-opacity="0.30" stroke-width="1.85"/>
+<line x1="343.3" y1="251.5" x2="251.0" y2="109.6" stroke-opacity="0.30" stroke-width="1.85"/>
+<line x1="251.0" y1="109.6" x2="147.5" y2="98.6" stroke-opacity="0.30" stroke-width="1.85"/>
+<line x1="413.3" y1="207.2" x2="308.5" y2="239.9" stroke-opacity="0.30" stroke-width="1.85"/>
+<line x1="413.3" y1="207.2" x2="382.4" y2="274.8" stroke-opacity="0.30" stroke-width="1.85"/>
+<line x1="761.0" y1="409.6" x2="693.9" y2="399.8" stroke-opacity="0.30" stroke-width="1.85"/>
+<line x1="812.5" y1="98.6" x2="530.2" y2="244.1" stroke-opacity="0.30" stroke-width="1.85"/>
+<line x1="343.3" y1="251.5" x2="429.8" y2="244.1" stroke-opacity="0.30" stroke-width="1.84"/>
+<line x1="616.7" y1="251.5" x2="530.2" y2="244.1" stroke-opacity="0.30" stroke-width="1.84"/>
+<line x1="382.4" y1="274.8" x2="229.1" y2="330.4" stroke-opacity="0.30" stroke-width="1.84"/>
+<line x1="709.0" y1="109.6" x2="530.2" y2="244.1" stroke-opacity="0.30" stroke-width="1.84"/>
+<line x1="429.8" y1="244.1" x2="607.4" y2="216.0" stroke-opacity="0.30" stroke-width="1.84"/>
+<line x1="577.6" y1="274.8" x2="730.9" y2="330.4" stroke-opacity="0.30" stroke-width="1.84"/>
+<line x1="251.0" y1="109.6" x2="429.8" y2="244.1" stroke-opacity="0.30" stroke-width="1.84"/>
+<line x1="913.5" y1="286.4" x2="855.5" y2="319.2" stroke-opacity="0.30" stroke-width="1.84"/>
+<line x1="129.2" y1="154.4" x2="188.7" y2="448.8" stroke-opacity="0.30" stroke-width="1.84"/>
+<line x1="343.3" y1="251.5" x2="564.6" y2="158.0" stroke-opacity="0.30" stroke-width="1.84"/>
+<line x1="219.3" y1="141.3" x2="229.1" y2="330.4" stroke-opacity="0.30" stroke-width="1.83"/>
+<line x1="855.5" y1="319.2" x2="929.0" y2="345.2" stroke-opacity="0.30" stroke-width="1.83"/>
+<line x1="728.1" y1="474.6" x2="740.7" y2="141.3" stroke-opacity="0.30" stroke-width="1.83"/>
+<line x1="104.5" y1="319.2" x2="31.0" y2="345.2" stroke-opacity="0.30" stroke-width="1.83"/>
+<line x1="46.5" y1="286.4" x2="67.0" y2="224.0" stroke-opacity="0.30" stroke-width="1.82"/>
+<line x1="199.0" y1="409.6" x2="231.9" y2="474.6" stroke-opacity="0.30" stroke-width="1.82"/>
+<line x1="352.6" y1="216.0" x2="607.4" y2="216.0" stroke-opacity="0.30" stroke-width="1.82"/>
+<line x1="616.7" y1="251.5" x2="778.9" y2="183.7" stroke-opacity="0.30" stroke-width="1.82"/>
+<line x1="830.8" y1="154.4" x2="651.5" y2="239.9" stroke-opacity="0.30" stroke-width="1.82"/>
+<line x1="343.3" y1="251.5" x2="181.1" y2="183.7" stroke-opacity="0.30" stroke-width="1.82"/>
+<line x1="46.5" y1="286.4" x2="147.5" y2="98.6" stroke-opacity="0.30" stroke-width="1.82"/>
+<line x1="46.5" y1="286.4" x2="104.5" y2="319.2" stroke-opacity="0.30" stroke-width="1.82"/>
+<line x1="546.7" y1="207.2" x2="577.6" y2="274.8" stroke-opacity="0.30" stroke-width="1.82"/>
+<line x1="607.4" y1="216.0" x2="830.8" y2="154.4" stroke-opacity="0.30" stroke-width="1.82"/>
+<line x1="546.7" y1="207.2" x2="651.5" y2="239.9" stroke-opacity="0.30" stroke-width="1.82"/>
+<line x1="595.0" y1="178.4" x2="530.2" y2="244.1" stroke-opacity="0.30" stroke-width="1.81"/>
+<line x1="181.1" y1="183.7" x2="778.9" y2="183.7" stroke-opacity="0.30" stroke-width="1.81"/>
+<line x1="147.5" y1="98.6" x2="844.7" y2="207.0" stroke-opacity="0.30" stroke-width="1.81"/>
+<line x1="693.9" y1="399.8" x2="740.7" y2="141.3" stroke-opacity="0.30" stroke-width="1.81"/>
+<line x1="830.8" y1="154.4" x2="728.1" y2="474.6" stroke-opacity="0.30" stroke-width="1.81"/>
+<line x1="352.6" y1="216.0" x2="530.2" y2="244.1" stroke-opacity="0.30" stroke-width="1.81"/>
+<line x1="395.4" y1="158.0" x2="616.7" y2="251.5" stroke-opacity="0.30" stroke-width="1.81"/>
+<line x1="212.7" y1="368.0" x2="168.5" y2="376.4" stroke-opacity="0.30" stroke-width="1.80"/>
+<line x1="761.0" y1="409.6" x2="728.1" y2="474.6" stroke-opacity="0.30" stroke-width="1.80"/>
+<line x1="913.5" y1="286.4" x2="812.5" y2="98.6" stroke-opacity="0.30" stroke-width="1.80"/>
+<line x1="188.7" y1="448.8" x2="104.5" y2="319.2" stroke-opacity="0.30" stroke-width="1.80"/>
+<line x1="771.3" y1="448.8" x2="855.5" y2="319.2" stroke-opacity="0.30" stroke-width="1.80"/>
+<line x1="365.0" y1="178.4" x2="429.8" y2="244.1" stroke-opacity="0.29" stroke-width="1.80"/>
+<line x1="747.3" y1="368.0" x2="791.5" y2="376.4" stroke-opacity="0.29" stroke-width="1.80"/>
+<line x1="761.0" y1="409.6" x2="830.8" y2="154.4" stroke-opacity="0.29" stroke-width="1.80"/>
+<line x1="325.0" y1="185.9" x2="382.4" y2="274.8" stroke-opacity="0.29" stroke-width="1.80"/>
+<line x1="844.7" y1="207.0" x2="730.9" y2="330.4" stroke-opacity="0.29" stroke-width="1.80"/>
+<line x1="115.3" y1="207.0" x2="231.9" y2="474.6" stroke-opacity="0.29" stroke-width="1.80"/>
+<line x1="616.7" y1="251.5" x2="812.5" y2="98.6" stroke-opacity="0.29" stroke-width="1.79"/>
+<line x1="693.9" y1="399.8" x2="651.5" y2="239.9" stroke-opacity="0.29" stroke-width="1.79"/>
+<line x1="104.5" y1="319.2" x2="266.1" y2="399.8" stroke-opacity="0.29" stroke-width="1.79"/>
+<line x1="188.7" y1="448.8" x2="308.5" y2="239.9" stroke-opacity="0.29" stroke-width="1.79"/>
+<line x1="352.6" y1="216.0" x2="129.2" y2="154.4" stroke-opacity="0.29" stroke-width="1.79"/>
+<line x1="212.7" y1="368.0" x2="129.2" y2="154.4" stroke-opacity="0.29" stroke-width="1.79"/>
+<line x1="572.4" y1="235.8" x2="651.5" y2="239.9" stroke-opacity="0.29" stroke-width="1.79"/>
+<line x1="635.0" y1="185.9" x2="577.6" y2="274.8" stroke-opacity="0.29" stroke-width="1.78"/>
+<line x1="288.5" y1="204.8" x2="251.0" y2="109.6" stroke-opacity="0.29" stroke-width="1.78"/>
+</g><g class="nodes">
+<circle class="n dim" cx="199.0" cy="409.6" r="6.9"><title>L_bankssts: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="230.5" cy="172.0" r="8.5"><title>L_caudalanteriorcingulate: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="352.6" cy="216.0" r="7.6"><title>L_caudalmiddlefrontal: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="46.5" cy="286.4" r="8.3"><title>L_cuneus: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:0.08s" cx="237.7" cy="431.4" r="20.5"><title>L_entorhinal: arrives at step 3</title></circle>
+<circle class="n lit" style="animation-delay:2.65s" cx="212.7" cy="368.0" r="10.7"><title>L_fusiform: arrives at step 98</title></circle>
+<circle class="n dim" cx="129.2" cy="154.4" r="8.2"><title>L_inferiorparietal: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:5.05s" cx="188.7" cy="448.8" r="9.7"><title>L_inferiortemporal: arrives at step 187</title></circle>
+<circle class="n lit" style="animation-delay:4.24s" cx="288.5" cy="204.8" r="10.0"><title>L_isthmuscingulate: arrives at step 157</title></circle>
+<circle class="n lit" style="animation-delay:5.84s" cx="104.5" cy="319.2" r="9.5"><title>L_lateraloccipital: arrives at step 216</title></circle>
+<circle class="n dim" cx="387.6" cy="235.8" r="8.1"><title>L_lateralorbitofrontal: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:3.78s" cx="67.0" cy="224.0" r="10.1"><title>L_lingual: arrives at step 140</title></circle>
+<circle class="n dim" cx="365.0" cy="178.4" r="8.2"><title>L_medialorbitofrontal: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="266.1" cy="399.8" r="8.4"><title>L_middletemporal: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:2.68s" cx="168.5" cy="376.4" r="10.5"><title>L_parahippocampal: arrives at step 99</title></circle>
+<circle class="n dim" cx="343.3" cy="251.5" r="7.5"><title>L_paracentral: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="413.3" cy="207.2" r="7.8"><title>L_parsopercularis: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="325.0" cy="185.9" r="7.3"><title>L_parsorbitalis: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="382.4" cy="274.8" r="7.5"><title>L_parstriangularis: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:6.62s" cx="31.0" cy="345.2" r="9.4"><title>L_pericalcarine: arrives at step 245</title></circle>
+<circle class="n dim" cx="181.1" cy="183.7" r="7.7"><title>L_postcentral: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="251.0" cy="109.6" r="7.7"><title>L_posteriorcingulate: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="395.4" cy="158.0" r="7.8"><title>L_precentral: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:4.84s" cx="147.5" cy="98.6" r="9.8"><title>L_precuneus: arrives at step 179</title></circle>
+<circle class="n dim" cx="215.0" cy="230.8" r="7.7"><title>L_rostralanteriorcingulate: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="308.5" cy="239.9" r="8.2"><title>L_rostralmiddlefrontal: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="429.8" cy="244.1" r="8.5"><title>L_superiorfrontal: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="115.3" cy="207.0" r="9.2"><title>L_superiorparietal: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:5.65s" cx="231.9" cy="474.6" r="9.6"><title>L_superiortemporal: arrives at step 209</title></circle>
+<circle class="n dim" cx="219.3" cy="141.3" r="7.7"><title>L_supramarginal: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="338.2" cy="145.9" r="6.9"><title>L_frontalpole: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:2.35s" cx="246.3" cy="345.4" r="10.5"><title>L_temporalpole: arrives at step 87</title></circle>
+<circle class="n dim" cx="150.3" cy="436.0" r="7.0"><title>L_transversetemporal: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:3.38s" cx="229.1" cy="330.4" r="10.5"><title>L_insula: arrives at step 125</title></circle>
+<circle class="n dim" cx="761.0" cy="409.6" r="6.8"><title>R_bankssts: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="729.5" cy="172.0" r="7.9"><title>R_caudalanteriorcingulate: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="607.4" cy="216.0" r="7.5"><title>R_caudalmiddlefrontal: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="913.5" cy="286.4" r="8.5"><title>R_cuneus: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:0.08s" cx="722.3" cy="431.4" r="20.5"><title>R_entorhinal: arrives at step 3</title></circle>
+<circle class="n lit" style="animation-delay:2.38s" cx="747.3" cy="368.0" r="10.8"><title>R_fusiform: arrives at step 88</title></circle>
+<circle class="n dim" cx="830.8" cy="154.4" r="8.2"><title>R_inferiorparietal: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:3.68s" cx="771.3" cy="448.8" r="10.1"><title>R_inferiortemporal: arrives at step 136</title></circle>
+<circle class="n lit" style="animation-delay:3.92s" cx="671.5" cy="204.8" r="10.1"><title>R_isthmuscingulate: arrives at step 145</title></circle>
+<circle class="n dim" cx="855.5" cy="319.2" r="8.7"><title>R_lateraloccipital: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="572.4" cy="235.8" r="8.3"><title>R_lateralorbitofrontal: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:3.76s" cx="893.0" cy="224.0" r="10.1"><title>R_lingual: arrives at step 139</title></circle>
+<circle class="n dim" cx="595.0" cy="178.4" r="7.8"><title>R_medialorbitofrontal: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:7.00s" cx="693.9" cy="399.8" r="9.4"><title>R_middletemporal: arrives at step 259</title></circle>
+<circle class="n lit" style="animation-delay:1.81s" cx="791.5" cy="376.4" r="11.4"><title>R_parahippocampal: arrives at step 67</title></circle>
+<circle class="n dim" cx="616.7" cy="251.5" r="7.4"><title>R_paracentral: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="546.7" cy="207.2" r="7.3"><title>R_parsopercularis: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="635.0" cy="185.9" r="7.5"><title>R_parsorbitalis: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="577.6" cy="274.8" r="7.5"><title>R_parstriangularis: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="929.0" cy="345.2" r="8.2"><title>R_pericalcarine: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="778.9" cy="183.7" r="7.5"><title>R_postcentral: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="709.0" cy="109.6" r="7.7"><title>R_posteriorcingulate: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="564.6" cy="158.0" r="7.6"><title>R_precentral: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:3.78s" cx="812.5" cy="98.6" r="10.2"><title>R_precuneus: arrives at step 140</title></circle>
+<circle class="n dim" cx="745.0" cy="230.8" r="8.4"><title>R_rostralanteriorcingulate: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="651.5" cy="239.9" r="8.1"><title>R_rostralmiddlefrontal: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:6.27s" cx="530.2" cy="244.1" r="9.5"><title>R_superiorfrontal: arrives at step 232</title></circle>
+<circle class="n lit" style="animation-delay:3.89s" cx="844.7" cy="207.0" r="10.4"><title>R_superiorparietal: arrives at step 144</title></circle>
+<circle class="n dim" cx="728.1" cy="474.6" r="8.1"><title>R_superiortemporal: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="740.7" cy="141.3" r="7.7"><title>R_supramarginal: not reached in 300 steps</title></circle>
+<circle class="n dim" cx="621.8" cy="145.9" r="7.3"><title>R_frontalpole: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:2.22s" cx="713.7" cy="345.4" r="10.8"><title>R_temporalpole: arrives at step 82</title></circle>
+<circle class="n dim" cx="809.7" cy="436.0" r="6.7"><title>R_transversetemporal: not reached in 300 steps</title></circle>
+<circle class="n lit" style="animation-delay:3.38s" cx="730.9" cy="330.4" r="10.6"><title>R_insula: arrives at step 125</title></circle>
+</g><text x="70" y="528" class="hemi">left hemisphere</text><text x="890" y="528" class="hemi" text-anchor="end">right hemisphere</text></svg>
+      <div class="cap"><span>Simulated arrival order from both entorhinal cortices, ε3/ε3, HCP connectome. Larger circles carry more pathology at step 300.</span><button id="replay" type="button">Replay</button></div>
+    </div>
+  </header>
+
+  <section id="result">
+    <h2>The wiring alone reproduces early Alzheimer's staging.</h2>
+    <div class="two">
+      <div>
+        <p>Give the model nothing but the connectome and a starting point in the entorhinal cortex, and the order in which regions are reached correlates with the Braak tau stages pathologists describe in post-mortem tissue: temporal pole, parahippocampal and fusiform cortex first, then cingulate and insula, then the rest.</p>
+        <p>The result holds in a window. Raise the spread rate far enough and strongly connected distant hubs jump the queue, and the ordering breaks down. The simulator sweeps that parameter and shows you the window, so the claim comes with its own range of validity.</p>
+      </div>
+      <div class="result">
+        <div class="num">0.64<small>Spearman ρ, arrival order vs Braak stage, ε3/ε3</small></div>
+        <div>
+          <table>
+            <tr><th>Genotype</th><th>Total load</th><th>Regions reached</th><th>ρ</th></tr>
+            <tr><td><span class="sw" style="background:#2a78d6"></span>ε2/ε2</td><td>5.6</td><td>8</td><td>0.55</td></tr>
+            <tr><td><span class="sw" style="background:#eda100"></span>ε3/ε3</td><td>7.3</td><td>24</td><td>0.64</td></tr>
+            <tr><td><span class="sw" style="background:#e34948"></span>ε4/ε4</td><td>11.5</td><td>63</td><td>0.54</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <h2>How it works</h2>
+    <div class="two">
+      <div>
+        <div class="eq">dx/dt = −β L x − κ x + s</div>
+        <p>Each of 68 cortical regions holds a pathology load, <em>x</em>. At every step, load flows from regions that have more of it to connected regions that have less, in proportion to how strongly they are wired together. That flow is the graph Laplacian, <em>L</em>, of the connectome. The brain clears some of it each step, and the seed regions keep producing more.</p>
+        <p>This is linear network diffusion, the model Raj, Kuceyeski and Weiner proposed in 2012 to explain why atrophy patterns in dementia look like the brain's own network structure.</p>
+      </div>
+      <dl>
+        <dt>β, the spread rate</dt><dd>How fast pathology moves along connections. The ordering is most Braak-like at low β.</dd>
+        <dt>κ, the clearance rate</dt><dd>How fast the brain removes pathology. Higher κ means less reaches distant regions.</dd>
+        <dt>APOE genotype</dt><dd>Scales β and κ. ε4 is modelled as faster spread and weaker clearance; ε2 as the reverse. These multipliers reflect the direction of known effects and are not fitted to biomarker data.</dd>
+        <dt>Seed</dt><dd>Where pathology begins. Braak staging starts in the entorhinal cortex, bilaterally, so that is the default.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section id="data">
+    <h2>Data and references</h2>
+    <div class="two">
+      <div>
+        <h3>Connectome</h3>
+        <p class="muted">Group-average structural connectivity from Human Connectome Project diffusion MRI, 68 regions of the Desikan-Killiany atlas, as distributed with the ENIGMA Toolbox (Larivière et al., <em>Nature Methods</em> 2021). Values are log-transformed streamline counts.</p>
+        <h3>Braak reference</h3>
+        <p class="muted">Cortical regions grouped into tau Braak stages following the tau-PET staging scheme of Schöll et al., <em>Neuron</em> 2016. Stage II is hippocampal and is not part of the cortical parcellation.</p>
+      </div>
+      <div>
+        <h3>What this is not</h3>
+        <p class="muted">A finding. The core result reproduces a published model on a group-average connectome. There is no individual variability in wiring, no regional vulnerability, no protein-specific kinetics, and no vascular contribution. The simulator exists so that each of those can be added and tested against the same baseline.</p>
+        <h3>Run it yourself</h3>
+        <p class="muted">Clone the repository, <code>pip install -r requirements.txt</code>, then <code>streamlit run app.py</code>. Upload your own connectome as a CSV with region labels in the first row and column.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Built by <a href="https://www.linkedin.com/in/oluwatoba-oyagbemi-24ba52323/">Oluwatoba Oyagbemi</a>, Biology and Computer Science, CCBC Honors College. Part of a portfolio on AI applied to cardiovascular and neurodegenerative disease.
+    · <a href="https://github.com/OluwatobaOyagbemi/connectome-spread">GitHub</a>
+    · <a href="https://connectome-spread.streamlit.app">Live simulator</a>
+  </footer>
+</div>
+<script>
+  const g = document.getElementById('graph');
+  const play = () => { g.classList.remove('play'); void g.offsetWidth; g.classList.add('play'); };
+  window.addEventListener('load', () => setTimeout(play, 400));
+  document.getElementById('replay').addEventListener('click', play);
+</script>
+</body>
+</html>
