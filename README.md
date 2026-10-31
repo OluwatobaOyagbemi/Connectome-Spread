@@ -37,7 +37,9 @@ APOE genotype scales `β` and `κ`: ε4 → faster spread, weaker clearance;
 1. Total pathology over time for all five genotypes, with the selected one highlighted
 2. Final regional load ranked, coloured by lobe
 3. Heatmap of every region over time, sorted by arrival order
-4. Arrival table: the step at which each region crosses a threshold
+4. Arrival table with each region's Braak stage, so order can be checked by eye
+5. **β sensitivity sweep**: Braak concordance across spread rates, for every genotype
+6. KPI row: total load vs ε3/ε3, regions reached, Braak concordance ρ, median arrival
 
 ## Data
 
@@ -50,16 +52,24 @@ your own CSV (region labels in the first row and column).
 
 ## A first result
 
-Seeding the left entorhinal cortex on the HCP connectome, the first regions
-reached are temporal pole, parahippocampal, fusiform and insula — the
-medial-temporal territory of early Braak staging. The model was given only the
-wiring and a seed; the ordering emerged from the network.
+Seeding both entorhinal cortices on the HCP connectome (β = 0.05, κ = 0.01), the
+simulated arrival order correlates with Braak tau staging at **Spearman ρ ≈ 0.64**:
+temporal pole, parahippocampal and fusiform regions arrive first, the medial-temporal
+territory of early Braak stages. The model was given only the wiring and a seed; the
+ordering emerged from the network.
 
-| genotype | total load (300 steps) | regions reached |
-|---|---|---|
-| ε2/ε2 | 2.8 | 1 |
-| ε3/ε3 | 3.7 | 5 |
-| ε4/ε4 | 5.7 | 14 |
+| genotype | total load (300 steps) | regions reached | Braak concordance ρ |
+|---|---|---|---|
+| ε2/ε2 | 5.6 | 8 | 0.55 |
+| ε3/ε3 | 7.3 | 24 | 0.64 |
+| ε4/ε4 | 11.5 | 63 | 0.54 |
+
+**This result holds in a parameter window, not everywhere.** The arrival order is
+sensitive to β: at low β pathology creeps through near neighbours and matches Braak
+order; at high β strongly connected distant hubs (e.g. superior parietal) jump the
+queue. The app's *β sensitivity* tab sweeps β from 0.01 to 0.20 and reports the
+range over which concordance stays ≥ 0.5 — for ε3/ε3 that is roughly β ∈ [0.01, 0.10],
+peaking near 0.02–0.05.
 
 ## Limitations
 
@@ -72,7 +82,6 @@ wiring and a seed; the ordering emerged from the network.
 ## Next steps
 
 - Add region-level vulnerability weights from gene-expression atlases
-- Quantify agreement between simulated arrival order and published Braak stages
 - Fit β and κ per genotype to longitudinal tau-PET data
 
 ## Run locally
