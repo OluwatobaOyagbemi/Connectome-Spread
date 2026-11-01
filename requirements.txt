@@ -1,4 +1,5 @@
-streamlit
-numpy
-pandas
-plotly
+streamlit>=1.45,<2
+numpy>=2.0,<3
+pandas>=2.2,<3
+plotly>=5.24,<8
+matplotlib>=3.9,<4   # reproduce.py figure only

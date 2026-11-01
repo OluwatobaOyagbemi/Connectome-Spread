@@ -9,6 +9,8 @@ from connectome import (hcp_connectome, synthetic_connectome, load_csv_connectom
                         region_lobe)
 from model import (APOE_PROFILES, Params, simulate, arrival_order, braak_stages,
                    braak_concordance, beta_sweep)
+from validation import (shuffled_braak_null, rewired_connectome_null, seed_control,
+                        threshold_control)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Page + theme
@@ -95,6 +97,19 @@ def run_sweep(W: np.ndarray, seed_idx: tuple[int, ...], names: tuple[str, ...],
     return betas, beta_sweep(W, list(seed_idx), list(names), betas, p, threshold)
 
 
+@st.cache_data(show_spinner=False)
+def run_controls(W: np.ndarray, seed_idx: tuple[int, ...], names: tuple[str, ...],
+                 beta: float, kappa: float, steps: int, threshold: float):
+    p = Params(beta=beta, kappa=kappa, steps=steps)
+    names = list(names)
+    arr = arrival_order(simulate(W, list(seed_idx), "ε3/ε3", p), threshold)
+    shuf = shuffled_braak_null(arr, braak_stages(names), n=2000)
+    rew = rewired_connectome_null(W, list(seed_idx), names, p, threshold, n=100)
+    seeds = seed_control(W, names, p, threshold)
+    thr = threshold_control(W, list(seed_idx), names, p)
+    return shuf, rew, seeds, thr
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Sidebar
 # ─────────────────────────────────────────────────────────────────────────────
@@ -148,7 +163,10 @@ with st.sidebar:
                          help="How fast pathology moves along connections.")
         kappa = st.slider("Clearance κ", 0.0, 0.05, DEFAULTS["kappa"], 0.0025,
                           help="How fast the brain removes pathology.")
-        steps = st.slider("Time steps", 50, 1000, DEFAULTS["steps"], 50)
+        steps = st.slider("Time steps", 50, 1000, DEFAULTS["steps"], 50,
+                          help="Steps are dimensionless model time, not years. "
+                               "Only the order and relative timing of arrivals "
+                               "are meaningful.")
         threshold = st.slider("Arrival threshold", 0.01, 1.0,
                               DEFAULTS["threshold"], 0.01,
                               help="Load a region must reach to count as 'arrived'.")
@@ -172,8 +190,8 @@ st.markdown('<div class="cs-eyebrow">Network diffusion · APOE · Braak staging<
             unsafe_allow_html=True)
 st.title("Connectome Spread")
 st.markdown(
-    '<div class="cs-sub">How neurodegenerative pathology spreads along the brain\'s '
-    'wiring, and how APOE genotype changes where it goes and how fast.</div>',
+    '<div class="cs-sub">How Alzheimer\'s tau pathology spreads along the brain\'s '
+    'wiring, tested against Braak staging, with APOE genotype as a what-if dial.</div>',
     unsafe_allow_html=True)
 
 st.markdown(
@@ -201,8 +219,8 @@ st.write("")
 # ─────────────────────────────────────────────────────────────────────────────
 # Tabs
 # ─────────────────────────────────────────────────────────────────────────────
-tab_spread, tab_regions, tab_sens, tab_model = st.tabs(
-    ["Spread", "Regions", "β sensitivity", "Model & data"])
+tab_spread, tab_regions, tab_sens, tab_ctrl, tab_model = st.tabs(
+    ["Spread", "Regions", "β sensitivity", "Controls", "Model & data"])
 
 # ── Spread ────────────────────────────────────────────────────────────────────
 with tab_spread:
@@ -348,6 +366,63 @@ with tab_sens:
         st.warning(f"For **{genotype}** with this seed, concordance never reaches 0.5 "
                    "— try an entorhinal seed, which is where Braak staging begins.")
 
+# ── Controls ──────────────────────────────────────────────────────────────────
+with tab_ctrl:
+    st.markdown("#### Is the Braak-like ordering better than chance?")
+    st.markdown(
+        "A concordance of ρ = 0.64 only means something against a baseline. "
+        "Three controls, all run on the ε3/ε3 reference with the current seed and "
+        "parameters: **shuffle the Braak labels** (could any labelling of this "
+        "arrival sequence score this high?), **rewire the connectome** (same density "
+        "and weights, scrambled topology; does the specific wiring matter?), and "
+        "**move the seed** (is the entorhinal start special, as Braak staging says?).")
+    with st.spinner("Running controls…"):
+        shuf, rew, seeds, thr = run_controls(W, seed_idx, tuple(names), beta, kappa,
+                                             steps, threshold)
+
+    c1, c2 = st.columns(2)
+    for col, null, title, n_lab in ((c1, shuf, "Shuffled Braak labels", "2000 permutations"),
+                                    (c2, rew, "Rewired connectome", "100 random graphs")):
+        with col:
+            st.markdown(f"**{title}** · {n_lab}")
+            samples = null.samples[~np.isnan(null.samples)]
+            fig = go.Figure(go.Histogram(x=samples, nbinsx=30,
+                                         marker=dict(color="#cfe0f7", line=dict(width=0)),
+                                         hovertemplate="ρ %{x:.2f}<br>%{y} samples<extra></extra>"))
+            fig.add_vline(x=null.observed, line=dict(color="#e34948", width=2.5),
+                          annotation_text=f"observed ρ = {null.observed:.2f}",
+                          annotation_position="top left", annotation_font_color="#e34948")
+            fig.add_vline(x=null.p95, line=dict(color=INK, width=1, dash="dot"),
+                          annotation_text=f"null 95th pct = {null.p95:.2f}",
+                          annotation_position="bottom right", annotation_font_size=11)
+            fig.update_layout(**base_layout(300, xaxis_title="Braak concordance ρ",
+                              yaxis_title="count", showlegend=False))
+            fig.update_xaxes(range=[-0.7, 0.9])
+            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+            ptxt = "p < 0.001" if null.p_value < 0.001 else f"p = {null.p_value:.3f}"
+            st.caption(f"Null mean {null.mean:.2f}, 95th percentile {null.p95:.2f}; "
+                       f"observed {null.observed:.2f}, one-sided {ptxt}.")
+
+    c3, c4 = st.columns(2)
+    with c3:
+        st.markdown("**Seed control** · bilateral seed, ε3/ε3")
+        sdf = pd.DataFrame(seeds)
+        st.dataframe(sdf, hide_index=True, width="stretch",
+                     column_config={"ρ": st.column_config.NumberColumn(format="%+.2f")})
+        best = max(seeds, key=lambda r: r["ρ"])
+        st.caption(f"Highest concordance from a **{best['seed']}** seed "
+                   f"(ρ = {best['ρ']:+.2f}). Seeding late-stage regions runs the "
+                   "cascade backwards and the sign flips.")
+    with c4:
+        st.markdown("**Threshold control** · entorhinal seed, ε3/ε3")
+        st.dataframe(pd.DataFrame(thr), hide_index=True, width="stretch",
+                     column_config={"ρ": st.column_config.NumberColumn(format="%.2f"),
+                                    "threshold": st.column_config.NumberColumn(format="%.2f")})
+        st.caption("At a high threshold many regions never 'arrive' and tie for last, "
+                   "which could inflate ρ. Lowering the threshold until every region "
+                   "arrives removes the ties; the ordering should survive.")
+    st.caption("Every number here is reproduced by `python reproduce.py` in the repository.")
+
 # ── Model & data ──────────────────────────────────────────────────────────────
 with tab_model:
     c1, c2 = st.columns(2)
@@ -360,15 +435,21 @@ with tab_model:
   with more of it to connected regions with less, weighted by connection strength
 - **β** — spread rate along wiring · **κ** — clearance rate · **s** — seed production
 
-This is linear network diffusion (Raj, Kuceyeski & Weiner, *Neuron* 2012). APOE
-genotype scales β and κ:
+This is linear network diffusion after Raj, Kuceyeski & Weiner (*Neuron* 2012),
+with a clearance term and a constant seed added. Time steps are dimensionless:
+only the order and relative timing of arrivals carry meaning. APOE genotype
+scales β and κ:
 """)
         st.dataframe(pd.DataFrame(
             [{"genotype": g, "effect": v["label"], "spread ×": v["beta"],
               "clearance ×": v["kappa"]} for g, v in APOE_PROFILES.items()]
         ).set_index("genotype"), width="stretch")
-        st.caption("Multipliers reflect the direction of known APOE effects; they are "
-                   "illustrative, not fitted to biomarker data.")
+        st.caption("Multipliers are illustrative, not fitted. Their direction follows "
+                   "the literature: ε4 carriers accumulate tau faster on tau-PET "
+                   "(Therriault et al., *JAMA Neurol* 2020) and ApoE isoforms differ "
+                   "in brain clearance of amyloid-β, ε4 slowest (Castellano et al., "
+                   "*Sci Transl Med* 2011). The magnitudes are a what-if, so the "
+                   "genotype curves show the model's assumptions, not a finding.")
 
     with c2:
         st.markdown("#### Data")
@@ -390,8 +471,10 @@ that never arrive are ranked last.
 - Group-average wiring: no individual variability
 - Linear diffusion: no regional vulnerability, protein-specific kinetics, or
   vascular contribution
-- Arrival order is β-sensitive — see the sensitivity tab for the window in which
-  the Braak-like result holds
+- Arrival order is β-sensitive — see the β sensitivity tab; the window narrows
+  for ε4 genotypes
+- Braak staging is a tau/Alzheimer's reference; the model itself is agnostic to
+  the protein, so results for other proteinopathies need their own staging scheme
 """)
         st.markdown("[Project site](https://oluwatobaoyagbemi.github.io/Connectome-Spread) · "
                     "[Source code](https://github.com/OluwatobaOyagbemi/connectome-spread)")

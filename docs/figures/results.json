@@ -1,0 +1,108 @@
+{
+  "defaults": {
+    "beta": 0.05,
+    "kappa": 0.01,
+    "steps": 300,
+    "threshold": 0.1,
+    "seed": "bilateral entorhinal"
+  },
+  "genotype_table": [
+    {
+      "genotype": "ε2/ε2",
+      "total load": 5.6,
+      "regions reached": 8,
+      "rho": 0.55
+    },
+    {
+      "genotype": "ε2/ε3",
+      "total load": 6.4,
+      "regions reached": 17,
+      "rho": 0.67
+    },
+    {
+      "genotype": "ε3/ε3",
+      "total load": 7.3,
+      "regions reached": 24,
+      "rho": 0.64
+    },
+    {
+      "genotype": "ε3/ε4",
+      "total load": 9.0,
+      "regions reached": 40,
+      "rho": 0.57
+    },
+    {
+      "genotype": "ε4/ε4",
+      "total load": 11.5,
+      "regions reached": 63,
+      "rho": 0.54
+    }
+  ],
+  "shuffled_braak_null": {
+    "n": 2000,
+    "mean": 0.0,
+    "p95": 0.2,
+    "p": 0.0005
+  },
+  "rewired_connectome_null": {
+    "n": 200,
+    "mean": 0.1,
+    "p95": 0.29,
+    "p": 0.005
+  },
+  "seed_control": [
+    {
+      "seed": "entorhinal",
+      "Braak stage of seed": "I",
+      "regions reached": 24,
+      "ρ": 0.64
+    },
+    {
+      "seed": "fusiform",
+      "Braak stage of seed": "III",
+      "regions reached": 36,
+      "ρ": 0.44
+    },
+    {
+      "seed": "superiorparietal",
+      "Braak stage of seed": "V",
+      "regions reached": 61,
+      "ρ": -0.23
+    },
+    {
+      "seed": "pericalcarine",
+      "Braak stage of seed": "VI",
+      "regions reached": 25,
+      "ρ": 0.12
+    },
+    {
+      "seed": "precentral",
+      "Braak stage of seed": "VI",
+      "regions reached": 36,
+      "ρ": -0.39
+    }
+  ],
+  "threshold_control": [
+    {
+      "threshold": 0.02,
+      "regions reached": 68,
+      "ρ": 0.62
+    },
+    {
+      "threshold": 0.05,
+      "regions reached": 60,
+      "ρ": 0.59
+    },
+    {
+      "threshold": 0.1,
+      "regions reached": 24,
+      "ρ": 0.64
+    }
+  ],
+  "beta_window": {
+    "min": 0.01,
+    "max": 0.19,
+    "peak": 0.02,
+    "peak_rho": 0.69
+  }
+}

@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Connectome Spread: network diffusion of tau pathology on a human connectome with APOE as a parameter"
+type: software
+authors:
+  - family-names: Oyagbemi
+    given-names: Oluwatoba Samuel
+    affiliation: "Community College of Baltimore County"
+repository-code: "https://github.com/OluwatobaOyagbemi/connectome-spread"
+url: "https://oluwatobaoyagbemi.github.io/Connectome-Spread"
+license: MIT
+date-released: 2026-10-31
+version: 0.2.0
+keywords: [network diffusion, connectome, Braak staging, APOE, Alzheimer's disease, Streamlit]
+references:
+  - type: article
+    title: "A network diffusion model of disease progression in dementia"
+    authors: [{family-names: Raj, given-names: Ashish}, {family-names: Kuceyeski, given-names: Amy}, {family-names: Weiner, given-names: Michael}]
+    journal: Neuron
+    year: 2012
+    volume: 73
+    issue: 6
+    doi: 10.1016/j.neuron.2011.12.040
+  - type: article
+    title: "The ENIGMA Toolbox: multiscale neural contextualization of multisite neuroimaging datasets"
+    authors: [{family-names: Larivière, given-names: Sara}]
+    journal: Nature Methods
+    year: 2021
+    doi: 10.1038/s41592-021-01186-4
+  - type: article
+    title: "PET imaging of tau deposition in the aging human brain"
+    authors: [{family-names: Schöll, given-names: Michael}]
+    journal: Neuron
+    year: 2016
+    doi: 10.1016/j.neuron.2016.01.028
