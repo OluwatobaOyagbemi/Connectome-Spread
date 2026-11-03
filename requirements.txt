@@ -3,3 +3,4 @@ numpy>=2.0,<3
 pandas>=2.2,<3
 plotly>=5.24,<8
 matplotlib>=3.9,<4   # reproduce.py figure only
+scipy>=1.13,<2
