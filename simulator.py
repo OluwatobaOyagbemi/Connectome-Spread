@@ -114,7 +114,7 @@ def run_controls(W: np.ndarray, seed_idx: tuple[int, ...], names: tuple[str, ...
 # Sidebar
 # ─────────────────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("[← Project home](/home)")
+    st.markdown("[← Project home](/)")
     st.markdown("### Connectome")
     source = st.radio(
         "Source", ["HCP group-average", "Synthetic", "Upload CSV"],
