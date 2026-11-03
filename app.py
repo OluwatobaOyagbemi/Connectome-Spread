@@ -28,7 +28,7 @@ def simulator():
 
 
 pages = [
-    st.Page(home, title="Home", url_path="home", default=True),
+    st.Page(home, title="Home", default=True),   # default page is always served at "/"
     st.Page(simulator, title="Simulator", url_path="simulator"),
 ]
 st.navigation(pages, position="hidden").run()
