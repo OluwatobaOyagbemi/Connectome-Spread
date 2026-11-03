@@ -21,6 +21,7 @@ from model import (APOE_PROFILES, Params, simulate, arrival_order, braak_stages,
                    braak_concordance, beta_sweep)
 from validation import (shuffled_braak_null, rewired_connectome_null, seed_control,
                         threshold_control)
+from analysis import seed_scan, seed_stage_trend, knockout_scan
 
 ROOT = Path(__file__).parent
 FIG_DIR = ROOT / "docs" / "figures"
@@ -77,6 +78,19 @@ def main(quick: bool = False) -> dict:
     print(f"\nβ window (ε3/ε3): ρ ≥ 0.5 for β ∈ [{win.min():.2f}, {win.max():.2f}], "
           f"peak at β = {peak:.2f} (ρ = {np.nanmax(sweep['ε3/ε3']):.2f})")
 
+    # ── 5. Seed scan + lesion scan ───────────────────────────────────────────
+    scan = seed_scan(W, names, p, THRESHOLD)
+    trend_r, early_minus_late = seed_stage_trend(scan)
+    print(f"\nSeed scan ({len(scan)} bilateral seeds): ρ vs seed's Braak stage, "
+          f"Spearman {trend_r:+.2f}; early (I/III) minus late (V/VI) mean ρ = {early_minus_late:+.2f}")
+    print("  top 5:   " + ", ".join(f"{r.seed} {r['ρ']:+.2f}" for _, r in scan.head(5).iterrows()))
+    print("  bottom 5:" + ", ".join(f" {r.seed} {r['ρ']:+.2f}" for _, r in scan.tail(5).iterrows()))
+    ko = knockout_scan(W, names, seed_idx, p, THRESHOLD)
+    print(f"\nLesion scan (baseline ρ = {ko.attrs['baseline']:.3f}), largest losses:")
+    for _, r in ko.head(5).iterrows():
+        print(f"  remove {r.removed:18} stage {r['Braak stage']:4} Δρ = {r['Δρ']:+.3f}")
+    print("  largest gains: " + ", ".join(f"{r.removed} {r['Δρ']:+.3f}" for _, r in ko.tail(3).iterrows()))
+
     results = {
         "defaults": {"beta": p.beta, "kappa": p.kappa, "steps": p.steps,
                      "threshold": THRESHOLD, "seed": "bilateral entorhinal"},
@@ -87,6 +101,13 @@ def main(quick: bool = False) -> dict:
                                     "p95": round(rew.p95, 2), "p": round(rew.p_value, 4)},
         "seed_control": [{**r, "ρ": round(r["ρ"], 2)} for r in seeds],
         "threshold_control": [{**r, "ρ": round(r["ρ"], 2)} for r in thr],
+        "seed_scan": {"trend_spearman": round(trend_r, 2),
+                      "early_minus_late": round(early_minus_late, 2),
+                      "top": [(r.seed, round(r["ρ"], 2)) for _, r in scan.head(5).iterrows()],
+                      "bottom": [(r.seed, round(r["ρ"], 2)) for _, r in scan.tail(5).iterrows()]},
+        "lesion_scan": {"baseline": round(float(ko.attrs["baseline"]), 3),
+                        "largest_losses": [(r.removed, r["Braak stage"], round(r["Δρ"], 3)) for _, r in ko.head(5).iterrows()],
+                        "largest_gains": [(r.removed, r["Braak stage"], round(r["Δρ"], 3)) for _, r in ko.tail(3).iterrows()]},
         "beta_window": {"min": float(win.min()), "max": float(win.max()),
                         "peak": float(peak), "peak_rho": round(float(np.nanmax(sweep["ε3/ε3"])), 2)},
     }

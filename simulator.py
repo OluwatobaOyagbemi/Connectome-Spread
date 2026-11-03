@@ -11,6 +11,7 @@ from model import (APOE_PROFILES, Params, simulate, arrival_order, braak_stages,
                    braak_concordance, beta_sweep)
 from validation import (shuffled_braak_null, rewired_connectome_null, seed_control,
                         threshold_control)
+from analysis import seed_scan, seed_stage_trend, knockout_scan
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Page + theme
@@ -95,6 +96,16 @@ def run_sweep(W: np.ndarray, seed_idx: tuple[int, ...], names: tuple[str, ...],
     betas = np.round(np.linspace(0.01, 0.20, 20), 3)
     p = Params(kappa=kappa, steps=steps)
     return betas, beta_sweep(W, list(seed_idx), list(names), betas, p, threshold)
+
+
+@st.cache_data(show_spinner=False)
+def run_scans(W: np.ndarray, seed_idx: tuple[int, ...], names: tuple[str, ...],
+              beta: float, kappa: float, steps: int, threshold: float, genotype: str):
+    p = Params(beta=beta, kappa=kappa, steps=steps)
+    names = list(names)
+    scan = seed_scan(W, names, p, threshold, genotype)
+    ko = knockout_scan(W, names, list(seed_idx), p, threshold, genotype)
+    return scan, seed_stage_trend(scan), ko, ko.attrs["baseline"]
 
 
 @st.cache_data(show_spinner=False)
@@ -219,8 +230,8 @@ st.write("")
 # ─────────────────────────────────────────────────────────────────────────────
 # Tabs
 # ─────────────────────────────────────────────────────────────────────────────
-tab_spread, tab_regions, tab_sens, tab_ctrl, tab_model = st.tabs(
-    ["Spread", "Regions", "β sensitivity", "Controls", "Model & data"])
+tab_spread, tab_regions, tab_sens, tab_ctrl, tab_scan, tab_model = st.tabs(
+    ["Spread", "Regions", "β sensitivity", "Controls", "Seeds & lesions", "Model & data"])
 
 # ── Spread ────────────────────────────────────────────────────────────────────
 with tab_spread:
@@ -422,6 +433,61 @@ with tab_ctrl:
                    "which could inflate ρ. Lowering the threshold until every region "
                    "arrives removes the ties; the ordering should survive.")
     st.caption("Every number here is reproduced by `python reproduce.py` in the repository.")
+
+# ── Seeds & lesions ───────────────────────────────────────────────────────────
+with tab_scan:
+    st.markdown("#### Where can the cascade start, and which regions carry it?")
+    with st.spinner("Scanning seeds and lesions…"):
+        scan, (trend_r, early_minus_late), ko, ko_base = run_scans(
+            W, seed_idx, tuple(names), beta, kappa, steps, threshold, genotype)
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown(f"**Seed scan** · every region seeded bilaterally, {genotype}")
+        st.markdown(
+            "If spread follows the wiring, seeding a late-stage region should give a "
+            "*worse* match to Braak order, not just a different one. It does: the "
+            f"concordance a seed produces falls with the seed's own Braak stage "
+            f"(Spearman {trend_r:+.2f} across {len(scan)} seeds; early-stage seeds "
+            f"average {early_minus_late:+.2f} higher ρ than stage V/VI seeds).")
+        fig = go.Figure()
+        for stage, grp in scan.groupby("seed Braak stage"):
+            fig.add_trace(go.Scatter(
+                x=grp["seed stage (num)"] + np.random.default_rng(0).uniform(-0.15, 0.15, len(grp)),
+                y=grp["ρ"], mode="markers", name=f"Braak {stage}",
+                marker=dict(size=9, line=dict(width=0)),
+                text=grp["seed"], hovertemplate="<b>%{text}</b><br>ρ %{y:.2f}<extra></extra>"))
+        fig.add_hline(y=0, line=dict(color=GRID, width=1))
+        fig.update_layout(**base_layout(360, xaxis_title="Braak stage of the seed region",
+                          yaxis_title="Braak concordance ρ"))
+        fig.update_xaxes(tickvals=[1, 3, 4, 5, 6], ticktext=["I", "III", "IV", "V", "VI"])
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+        st.dataframe(scan[["seed", "seed Braak stage", "lobe", "regions reached", "ρ"]],
+                     height=300, width="stretch",
+                     column_config={"ρ": st.column_config.NumberColumn(format="%+.2f")})
+
+    with c2:
+        st.markdown(f"**Lesion scan** · one region removed at a time, seed {', '.join(names[i] for i in seed_idx)}")
+        st.markdown(
+            "Each region (both hemispheres) is cut out of the connectome and the "
+            "cascade re-run. Δρ is the change in concordance, scored over the surviving "
+            f"regions, from a baseline of {ko_base:.2f}. Negative: the region is a bridge "
+            "the Braak-like order depends on. Positive: a shortcut that lets pathology "
+            "jump the queue.")
+        fig = go.Figure(go.Bar(
+            x=ko["Δρ"], y=ko["removed"], orientation="h",
+            marker=dict(color=[LOBE_COLOR.get(l, INK) for l in ko["lobe"]], line=dict(width=0)),
+            text=ko["Braak stage"], textposition="outside", textfont=dict(size=10),
+            hovertemplate="<b>%{y}</b><br>Δρ %{x:+.3f}<extra></extra>"))
+        fig.update_layout(**base_layout(max(420, 16 * len(ko) + 60), xaxis_title="Δρ when removed",
+                          showlegend=False, bargap=0.3))
+        fig.update_yaxes(categoryorder="array", categoryarray=list(ko["removed"][::-1]),
+                         tickfont=dict(size=10), showgrid=False)
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+        worst = ko.head(4)
+        st.caption("Largest losses: " + ", ".join(
+            f"{r.removed} (stage {r['Braak stage']}, Δρ {r['Δρ']:+.3f})" for _, r in worst.iterrows())
+            + ". Effects are modest in size; their ordering, not their magnitude, is the result.")
 
 # ── Model & data ──────────────────────────────────────────────────────────────
 with tab_model:
