@@ -8,6 +8,8 @@ what-if parameter.
 **Simulator:** https://connectome-spread.streamlit.app  
 **Reproduce every number below:** `python reproduce.py` · **Tests:** `pytest -q`
 
+![50-second walkthrough of the simulator](docs/media/demo.gif)
+
 ![Arrival order vs Braak stage, with shuffled-label and rewired-connectome null distributions](docs/figures/validation.png)
 
 ## Result
@@ -191,11 +193,37 @@ fit.py            fit (β, κ) to a regional tau pattern; cross-sectional and lo
 fit_apoe.py       per-APOE-group fit with bootstrap CIs and implied multipliers
 connectome.py     HCP / synthetic / CSV connectome loading
 reproduce.py      prints every number in this README, writes docs/figures/
+mcp_server.py     the simulation as MCP tools for AI agents
 build_landing.py  regenerates the numbers baked into docs/index.html
 tests/            pytest regression tests for the README table and controls
 data/             HCP DK-68 connectome + provenance + license; tau_pet_template.csv for fitting
-docs/             landing page (GitHub Pages) and figures
+docs/             landing page (GitHub Pages), figures, demo video
 ```
+
+## Use it from an AI agent (MCP)
+
+`mcp_server.py` exposes the simulation as eight tools over the Model Context
+Protocol, so Claude (or any MCP client) can run it directly: `list_regions`,
+`list_genotypes`, `simulate_spread`, `compare_genotypes`, `sweep_beta`,
+`run_controls`, `scan_seeds`, `scan_lesions`. Every tool calls the same code
+path as the app and the tests.
+
+```
+pip install "mcp[cli]"
+claude mcp add connectome-spread -- python /absolute/path/to/mcp_server.py   # Claude Code
+```
+
+Claude Desktop (`claude_desktop_config.json`):
+
+```json
+{"mcpServers": {"connectome-spread": {"command": "python",
+                                       "args": ["/absolute/path/to/mcp_server.py"]}}}
+```
+
+Then ask, for example: *"Seed the fusiform cortex with ε4/ε4 and list the Braak V
+regions that arrive before step 150"* or *"Which single lesion hurts Braak
+concordance most, and is it a hub?"* `tests/test_mcp.py` exercises the server
+end to end over stdio.
 
 ## Run locally
 
@@ -204,6 +232,7 @@ pip install -r requirements.txt
 streamlit run app.py
 python reproduce.py       # ~1 min: tables, nulls, figure
 pytest -q                 # a few seconds
+python mcp_server.py      # MCP server on stdio (see above)
 ```
 
 ## Citation
