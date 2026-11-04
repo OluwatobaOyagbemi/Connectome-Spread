@@ -85,7 +85,8 @@ threshold 0.10.
 2. **Regions** — final regional load ranked and coloured by lobe; arrival table with each region's Braak stage
 3. **β sensitivity** — Braak concordance across spread rates, for every genotype, with the ≥ 0.5 window reported
 4. **Controls** — the two null distributions, the seed control and the threshold control above, recomputed live for the current seed and parameters
-5. **Model & data** — equation, APOE multipliers, provenance, limitations
+5. **Seeds & lesions** — every region as a seed; every region removed in turn
+6. **Model & data** — equation, APOE multipliers, provenance, limitations
 
 ## Data
 
@@ -117,9 +118,64 @@ your own CSV with region labels in the first row and column.
 - Streamlit Community Cloud sleeps after inactivity; the first visit may take a
   minute to wake.
 
+## Beyond the reproduction: two scans
+
+Everything above reproduces a published model with controls. Two analyses in
+`analysis.py` ask questions the original paper did not, on the same wiring:
+
+**Seed scan — can the cascade start anywhere?** Seed every one of the 34
+bilateral region pairs in turn. The concordance a seed produces falls with the
+seed's own Braak stage (Spearman **−0.69** across 34 seeds; stage I/III seeds
+average 0.52 higher ρ than stage V/VI seeds). Entorhinal is first (0.64),
+followed by temporal pole (0.53), fusiform (0.44) and parahippocampal (0.40) —
+the Braak III territory — while every stage V/VI seed scores ≤ 0.12 and most run
+the cascade backwards (postcentral −0.42, precentral −0.39). The wiring does not
+merely *permit* the clinical origin; it singles it out.
+
+**Lesion scan — which regions carry it?** Remove one region pair at a time and
+re-run from the entorhinal seed, scoring concordance over the surviving regions
+only (so a removed region is not penalised for never arriving). The four removals
+that hurt most are temporal pole and all three Braak III regions (fusiform,
+parahippocampal, lingual; Δρ −0.03 to −0.05). Removing late-stage hubs
+(precuneus, pericalcarine, anterior cingulate) *raises* concordance slightly:
+they are shortcuts that let pathology jump the queue. The effect does not track
+how strongly connected a region is (strength vs Δρ, Spearman −0.08), so it is
+about position in the network, not hubness. **Effects are modest** — no single
+lesion changes ρ by more than 0.05 — and the ordering, not the magnitude, is the
+result.
+
+Both scans run live in the app's *Seeds & lesions* tab for any genotype and
+parameters, and are reproduced by `reproduce.py`.
+
+## Fitting APOE instead of asserting it
+
+`fit.py` and `fit_apoe.py` are the path from assumed multipliers to measured
+ones. Given a regional tau-PET table (one SUVR per Desikan-Killiany region, per
+APOE group), `fit_apoe.py` finds the (β, κ) that best reproduce each group's
+pattern and reports the implied genotype multipliers with bootstrap 95% CIs:
+
+```
+python fit_apoe.py --demo              # pipeline on synthetic data; recovers planted ×1.8 / ×0.5
+python fit_apoe.py data/tau_pet.csv    # your data, in the format of data/tau_pet_template.csv
+```
+
+**What a snapshot can and cannot tell you.** Parameter-recovery tests
+(`tests/test_fit.py`) show that one cross-sectional pattern pins down the ratio
+β/κ but not β and κ separately — slow spread with slow clearance looks like fast
+spread with fast clearance. Two time points (baseline + follow-up) recover both
+to within ~15%. So the data to look for is **longitudinal** tau-PET split by
+genotype; Baek et al. (*Alz Res Ther* 2020) is a 2-year ε4+/ε4− dataset with
+regional SUVRs, and ADNI, A4/LEARN and BioFINDER-2 have the individual-level
+versions. Connectome-based tau models with APOE parameterised regionally have
+been explored on BioFINDER-2 (Xiao, Vogel et al., AAIC 2024); this project's
+contribution would be a per-genotype global (β, κ) fit with stated identifiability,
+on open data, reproducible from one script.
+
 ## Next steps
 
-- Fit β and κ per genotype to longitudinal tau-PET (ADNI) rather than asserting them
+- Obtain longitudinal regional tau-PET by APOE group and run `fit_apoe.py`; replace
+  `APOE_PROFILES` with the fitted multipliers if they are supported
+- Lesion scan on individual connectomes, to see whether the bridge regions are stable across people
 - Add region-level vulnerability weights from gene-expression atlases (Allen Human Brain Atlas)
 - Add Braak II by extending to a parcellation that includes the hippocampus
 
@@ -130,11 +186,14 @@ app.py            entry point: landing page, then /simulator
 simulator.py      the Streamlit app
 model.py          diffusion model, Braak reference, concordance
 validation.py     shuffled-label null, rewired-connectome null, seed and threshold controls
+analysis.py       seed scan (all 34 seeds) and lesion scan (one region removed at a time)
+fit.py            fit (β, κ) to a regional tau pattern; cross-sectional and longitudinal designs
+fit_apoe.py       per-APOE-group fit with bootstrap CIs and implied multipliers
 connectome.py     HCP / synthetic / CSV connectome loading
 reproduce.py      prints every number in this README, writes docs/figures/
 build_landing.py  regenerates the numbers baked into docs/index.html
 tests/            pytest regression tests for the README table and controls
-data/             HCP DK-68 connectome + provenance + license
+data/             HCP DK-68 connectome + provenance + license; tau_pet_template.csv for fitting
 docs/             landing page (GitHub Pages) and figures
 ```
 

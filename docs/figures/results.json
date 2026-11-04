@@ -99,6 +99,101 @@
       "ρ": 0.64
     }
   ],
+  "seed_scan": {
+    "trend_spearman": -0.69,
+    "early_minus_late": 0.52,
+    "top": [
+      [
+        "entorhinal",
+        0.64
+      ],
+      [
+        "temporalpole",
+        0.53
+      ],
+      [
+        "fusiform",
+        0.44
+      ],
+      [
+        "parahippocampal",
+        0.4
+      ],
+      [
+        "inferiortemporal",
+        0.35
+      ]
+    ],
+    "bottom": [
+      [
+        "superiorparietal",
+        -0.23
+      ],
+      [
+        "caudalmiddlefrontal",
+        -0.24
+      ],
+      [
+        "supramarginal",
+        -0.31
+      ],
+      [
+        "precentral",
+        -0.39
+      ],
+      [
+        "postcentral",
+        -0.42
+      ]
+    ]
+  },
+  "lesion_scan": {
+    "baseline": 0.638,
+    "largest_losses": [
+      [
+        "temporalpole",
+        "IV",
+        -0.048
+      ],
+      [
+        "fusiform",
+        "III",
+        -0.042
+      ],
+      [
+        "parahippocampal",
+        "III",
+        -0.041
+      ],
+      [
+        "lingual",
+        "III",
+        -0.032
+      ],
+      [
+        "insula",
+        "IV",
+        -0.03
+      ]
+    ],
+    "largest_gains": [
+      [
+        "caudalanteriorcingulate",
+        "IV",
+        0.028
+      ],
+      [
+        "precuneus",
+        "V",
+        0.029
+      ],
+      [
+        "pericalcarine",
+        "VI",
+        0.038
+      ]
+    ]
+  },
   "beta_window": {
     "min": 0.01,
     "max": 0.19,
