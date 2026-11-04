@@ -23,12 +23,12 @@ def home():
     st.iframe(html, height=2450)
 
 
-def simulator():
-    import simulator as sim  # noqa: F401  (module runs the app on import)
-
-
 pages = [
     st.Page(home, title="Home", default=True),   # default page is always served at "/"
-    st.Page(simulator, title="Simulator", url_path="simulator"),
+    # A script path, not an import: Streamlit re-executes the file on every rerun.
+    # (Importing it would run the module once per process and leave later
+    # visitors with a blank page.)
+    st.Page(str(Path(__file__).parent / "simulator.py"), title="Simulator",
+            url_path="simulator"),
 ]
 st.navigation(pages, position="hidden").run()
