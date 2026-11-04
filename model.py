@@ -16,7 +16,7 @@ regions with less, in proportion to connection strength. That is the whole
 
 APOE genotype changes beta and kappa. These multipliers are illustrative,
 not fitted to data: APOE4 is modelled as faster spread + weaker clearance,
-APOE2 as the reverse. Say so in the README.
+APOE2 as the reverse. The README and the app say so, with sources.
 """
 
 from __future__ import annotations
