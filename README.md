@@ -10,29 +10,110 @@ what-if parameter.
 
 ![50-second walkthrough of the simulator](docs/media/demo.gif)
 
-![Arrival order vs Braak stage, with shuffled-label and rewired-connectome null distributions](docs/figures/validation.png)
+![Arrival order vs Braak stage; shuffled-label and geometry-preserving null distributions; connectome vs distance vs both](docs/figures/validation.png)
 
 ## Result
 
 Give a linear network-diffusion model nothing but a real human connectome and a
 seed in the entorhinal cortex, and the order in which cortical regions are reached
-correlates with Braak tau staging at **Spearman ρ = 0.64**. Temporal pole,
-parahippocampal and fusiform cortex arrive first (Braak III), then cingulate and
-insula (IV), then association cortex (V), with primary sensorimotor and visual
-cortex (VI) last or not at all.
+correlates with Braak tau staging at **Spearman ρ = 0.64**. Parahippocampal and
+fusiform cortex arrive first (Braak III), then temporal pole, cingulate and insula
+(IV), then association cortex (V), with primary sensorimotor and visual cortex
+(VI) mostly last or not at all.
 
-That number is well above what chance produces, and it depends on both the wiring
-and the seed:
+**But straight-line distance from the entorhinal cortex does just as well
+(ρ = 0.65), with no model at all.** Braak stages are laid out in space, spreading
+outward from the medial temporal lobe, so anything that spreads smoothly away from
+the seed will correlate with them. This is the baseline connectome-spread claims
+most need to beat, and at this resolution the group connectome does not beat it.
+
+What the connectome does do is carry information that distance lacks:
+
+- The two orders agree only weakly with each other (ρ = 0.44; 0.33 when every region arrives).
+- Controlling for distance, connectome arrival still predicts Braak stage
+  (partial ρ = **0.52**; 0.56 when every region arrives).
+- Adding the two rank orders, equally weighted and with nothing fitted, gives
+  **ρ = 0.73** (0.76 when every region arrives). The gain over distance alone is
+  suggestive, not conclusive: bootstrap 95% CI **[−0.04, +0.23]**.
+- The connectome gets lingual, isthmus cingulate and lateral orbitofrontal cortex
+  right where distance gets them wrong. It gets primary visual cortex
+  (pericalcarine, cuneus; Braak VI) wrong, pulling it in early through strong
+  occipital connections.
+
+So the claim this repository supports: **the wiring is not a better ruler than
+distance, but it is a different one, and Braak staging looks like a mix of both.**
 
 | control | what it tests | result |
 |---|---|---|
 | Shuffle Braak labels (2,000 permutations) | could any labelling of this arrival sequence score this high? | null mean 0.00, 95th pct **0.20**, p < 0.001 |
-| Rewire connectome (200 graphs, same density and weights) | does the specific wiring matter? | null mean 0.10, 95th pct **0.29**, p = 0.005 |
+| Rewire connectome (200 graphs, same density and weights) | does any graph of this density do as well? | null mean 0.10, 95th pct **0.29**, p = 0.005 |
+| Rewire only among pairs at similar distance (500 graphs) | does the specific wiring matter beyond geometry? | null mean 0.41, 95th pct **0.56**, p = 0.002 |
+| Distance from the seed, no model | does the connectome beat a ruler? | ρ = **0.65**; connectome − distance 95% CI [−0.24, +0.23] |
 | Move the seed (bilateral) | is the entorhinal start special? | fusiform +0.44 · superior parietal −0.23 · pericalcarine +0.12 · precentral **−0.39** |
 | Lower the arrival threshold to 0.02 | does the ordering survive when every region arrives and nothing ties for last? | all 68 reached, ρ = **0.62** |
 
+The full rewire is the weak null: it scrambles space along with wiring, so a
+distance-like pattern beats it easily. The geometry-preserving rewire keeps the
+near-strong, far-weak structure and shuffles only which specific regions connect
+(after Betzel & Bassett, *PNAS* 2018). Geometry alone gets to 0.41, and the real
+wiring still beats it. Bootstrap CIs resample the 34 bilateral region pairs,
+since left and right copies of a region are not independent.
+
 Seeding a late-stage region runs the cascade backwards and the correlation flips
-sign. Only the entorhinal seed, where Braak staging begins, produces Braak order.
+sign. Distance from that seed does the same, so the seed control shows where Braak
+staging starts more than it shows anything about the wiring.
+
+## Does a finer parcellation help the connectome?
+
+An obvious objection to the result above is that 68 regions is coarse, and the
+wiring might only beat distance at higher resolution. `resolution.py` reruns the
+comparison on five finer parcellations of the same HCP data: Schaefer
+100/200/300/400 and Glasser 360, all from the ENIGMA Toolbox.
+
+![Connectome, distance and combined Braak concordance across six parcellations, with bootstrap CIs on the gain over distance](docs/figures/resolution.png)
+
+| atlas | parcels | connectome | distance | both | partial ρ, connectome \| distance | connectome − distance, 95% CI | geometry null p |
+|---|---|---|---|---|---|---|---|
+| Desikan-Killiany | 68 | 0.58 | 0.65 | 0.74 | 0.54 | [−0.32, +0.19] | 0.025 |
+| Schaefer | 100 | 0.49 | 0.44 | 0.56 | 0.42 | [−0.42, +0.39] | 0.005 |
+| Schaefer | 200 | 0.52 | 0.54 | 0.62 | 0.42 | [−0.38, +0.25] | 0.005 |
+| Schaefer | 300 | 0.58 | 0.52 | 0.65 | 0.50 | [−0.33, +0.34] | 0.005 |
+| Schaefer | 400 | 0.58 | 0.49 | 0.63 | 0.50 | [−0.30, +0.37] | 0.005 |
+| Glasser | 360 | 0.47 | 0.50 | 0.61 | 0.42 | [−0.38, +0.26] | 0.005 |
+
+**Finer resolution does not let the connectome beat distance.** The point
+estimates go both ways (connectome ahead by up to 0.09 at Schaefer 300/400,
+behind at DK-68, Schaefer 200 and Glasser), and every CI on the difference spans
+zero by a wide margin. **The rest of the DK-68 result replicates at every
+resolution:**
+
+- The connectome carries Braak information that distance lacks (partial ρ 0.42–0.54).
+- It beats the geometry-preserving null (p ≤ 0.025).
+- Adding the two orders beats either one alone (gain over distance +0.08 to
+  +0.14). No single CI excludes zero, and the six atlases are not independent
+  tests, so this stays suggestive.
+
+Method notes, because each of these choices could change the answer:
+
+- **Ordering by final load, not arrival.** This table ranks regions by pathology
+  load at the last step, which is why the DK-68 connectome scores 0.58 here and
+  0.64 in the Result section. A fixed arrival threshold cannot be compared across
+  atlases: the model reaches a steady state in which finer parcels plateau lower,
+  and at the DK-tuned threshold only 5–15 of 200–400 parcels ever "arrive".
+  Running longer does not help, and neither does scaling the threshold by parcel
+  count (only 24–34% of parcels arrive at 200–400 parcels).
+- **Braak labels** come from the Desikan-Killiany region each parcel mostly
+  overlaps on the fsaverage5 surface; parcels mostly on the medial wall (≤ 9 per
+  atlas) are left out of the score but stay in the network.
+- **Seed:** the parcels in each hemisphere that are mostly entorhinal, otherwise
+  the most entorhinal one. Schaefer atlases cover entorhinal cortex poorly: at
+  Schaefer 100 the seed is a temporal-pole parcel only 12–16% entorhinal. Three
+  alternative seed definitions (`seed_sensitivity`) move ρ by ≤ 0.11 and leave
+  the conclusions unchanged.
+- **CIs** resample the 34 parent Desikan-Killiany regions, so atlases with more
+  parcels do not get narrower intervals from parcels that are not independent.
+- **The connectome gets its best shot:** sweeping β from 0.01 to 0.20 raises its
+  ρ by at most 0.05 at any atlas (distance has no parameters to tune).
 
 The ordering is β-sensitive, and the app sweeps β from 0.01 to 0.20 for every
 genotype. For ε3/ε3, ρ peaks at β ≈ 0.02 (0.69) and declines gradually, staying
@@ -100,6 +181,14 @@ threshold 0.10.
 - **Braak reference.** Cortical regions grouped into tau Braak stages following
   the tau-PET ROI scheme of Schöll et al. (*Neuron* 2016). Stage II is hippocampal
   and absent from the cortical parcellation, so stages run I, III, IV, V, VI.
+- **Region centroids.** Mean vertex position of each Desikan-Killiany region on
+  the fsaverage5 surface, from the same ENIGMA Toolbox; used only for the distance
+  controls. Bundled in `data/dk68_centroids.csv`; regenerate with
+  `python data/make_centroids.py`.
+- **Finer parcellations.** HCP structural connectomes for Schaefer 100–400 and
+  Glasser 360 from the same ENIGMA Toolbox and pipeline, with parcel centroids
+  and parent Desikan-Killiany regions computed from its fsaverage5 surface
+  labels. Bundled in `data/atlases/`; regenerate with `python data/make_atlases.py`.
 - **Concordance.** Spearman ρ between simulated arrival step and Braak stage.
   Regions that never arrive are ranked last (tied); the threshold control checks
   that this does not drive the result.
@@ -110,6 +199,11 @@ your own CSV with region labels in the first row and column.
 
 ## Limitations
 
+- At group level, connectome diffusion does not outperform Euclidean distance
+  from the seed at any of six parcellations (68–400 regions). Individual
+  connectomes and regional tau-PET targets are where that comparison should go next.
+- The reference is Braak *stage*, five ordinal levels over 68 regions, so many
+  regions tie. Regional tau-PET values would be a sharper target.
 - APOE multipliers are directional and illustrative, not fitted to imaging or
   biomarker data.
 - Group-average connectome: no individual variation in wiring.
@@ -129,16 +223,18 @@ Everything above reproduces a published model with controls. Two analyses in
 bilateral region pairs in turn. The concordance a seed produces falls with the
 seed's own Braak stage (Spearman **−0.69** across 34 seeds; stage I/III seeds
 average 0.52 higher ρ than stage V/VI seeds). Entorhinal is first (0.64),
-followed by temporal pole (0.53), fusiform (0.44) and parahippocampal (0.40) —
-the Braak III territory — while every stage V/VI seed scores ≤ 0.12 and most run
-the cascade backwards (postcentral −0.42, precentral −0.39). The wiring does not
-merely *permit* the clinical origin; it singles it out.
+followed by temporal pole (0.53), fusiform (0.44) and parahippocampal (0.40),
+while every stage V/VI seed scores ≤ 0.23 and most run the cascade backwards
+(postcentral −0.42, precentral −0.39). **Straight-line distance from each seed
+gives nearly the same picture** (Spearman −0.62, entorhinal also first), so this
+is mostly a statement about the geometry of Braak staging. It does not show that
+the wiring singles out the clinical origin.
 
 **Lesion scan — which regions carry it?** Remove one region pair at a time and
 re-run from the entorhinal seed, scoring concordance over the surviving regions
 only (so a removed region is not penalised for never arriving). The four removals
-that hurt most are temporal pole and all three Braak III regions (fusiform,
-parahippocampal, lingual; Δρ −0.03 to −0.05). Removing late-stage hubs
+that hurt most are temporal pole (Braak IV) and all three Braak III regions
+(fusiform, parahippocampal, lingual; Δρ −0.03 to −0.05). Removing late-stage hubs
 (precuneus, pericalcarine, anterior cingulate) *raises* concordance slightly:
 they are shortcuts that let pathology jump the queue. The effect does not track
 how strongly connected a region is (strength vs Δρ, Spearman −0.08), so it is
@@ -175,6 +271,8 @@ on open data, reproducible from one script.
 
 ## Next steps
 
+- Rerun the connectome-vs-distance comparison against regional tau-PET instead of
+  Braak stage, where the target is continuous and has far fewer ties
 - Obtain longitudinal regional tau-PET by APOE group and run `fit_apoe.py`; replace
   `APOE_PROFILES` with the fitted multipliers if they are supported
 - Lesion scan on individual connectomes, to see whether the bridge regions are stable across people
@@ -187,7 +285,8 @@ on open data, reproducible from one script.
 app.py            entry point: landing page, then /simulator
 simulator.py      the Streamlit app
 model.py          diffusion model, Braak reference, concordance
-validation.py     shuffled-label null, rewired-connectome null, seed and threshold controls
+validation.py     shuffled-label, rewired and geometry-preserving nulls; distance baseline; seed and threshold controls
+resolution.py     connectome vs distance on five finer parcellations, with seed sensitivity
 analysis.py       seed scan (all 34 seeds) and lesion scan (one region removed at a time)
 fit.py            fit (β, κ) to a regional tau pattern; cross-sectional and longitudinal designs
 fit_apoe.py       per-APOE-group fit with bootstrap CIs and implied multipliers
@@ -196,7 +295,7 @@ reproduce.py      prints every number in this README, writes docs/figures/
 mcp_server.py     the simulation as MCP tools for AI agents
 build_landing.py  regenerates the numbers baked into docs/index.html
 tests/            pytest regression tests for the README table and controls
-data/             HCP DK-68 connectome + provenance + license; tau_pet_template.csv for fitting
+data/             HCP DK-68 connectome, region centroids, finer atlases (data/atlases/), build scripts, provenance, license
 docs/             landing page (GitHub Pages), figures, demo video
 ```
 

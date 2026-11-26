@@ -325,12 +325,13 @@
   </header>
 
   <section id="result">
-    <h2>The wiring alone reproduces early Alzheimer's staging.</h2>
+    <h2>The wiring reproduces early Alzheimer's staging. So does a ruler. Together they do better.</h2>
     <div class="two">
       <div>
-        <p>Give the model nothing but the connectome and a starting point in the entorhinal cortex, and the order in which regions are reached correlates with the Braak tau stages pathologists describe in post-mortem tissue: temporal pole, parahippocampal and fusiform cortex first, then cingulate and insula, then the rest.</p>
+        <p>Give the model nothing but the connectome and a starting point in the entorhinal cortex, and the order in which regions are reached correlates with the Braak tau stages pathologists describe in post-mortem tissue: parahippocampal and fusiform cortex first, then temporal pole, cingulate and insula, then the rest.</p>
+        <p id="geometry">The catch: Braak stages are laid out in space, so straight-line distance from the entorhinal cortex predicts them just as well. The two orders barely agree with each other, though, and the connectome still predicts Braak stage once distance is controlled for. Wiring and geometry carry different information, and adding their rank orders beats either one. The same holds on five finer parcellations of the same data, up to 400 regions: finer resolution does not let the wiring beat the ruler.</p>
         <p>The result holds in a window. Raise the spread rate far enough and strongly connected distant hubs jump the queue, and the ordering breaks down. The simulator sweeps that parameter and shows you the window, so the claim comes with its own range of validity.</p>
-        <p id="controls">Against chance: shuffling the Braak labels gives a 95th-percentile ρ of 0.20 (2,000 permutations), and rewiring the connectome with the same density and weights gives 0.29 (200 graphs). Moving the seed breaks it: fusiform +0.44, superior parietal -0.23, precentral -0.39. Only the entorhinal start, where Braak staging begins, produces Braak order. <a href="https://github.com/OluwatobaOyagbemi/connectome-spread/blob/main/reproduce.py"><code>reproduce.py</code></a> regenerates every number on this page.</p>
+        <p id="controls">Against chance: shuffling the Braak labels gives a 95th-percentile ρ of 0.20 (2,000 permutations). Against geometry: rewiring the connectome only among region pairs at similar distance gives 0.56 (500 graphs), which the real wiring beats. Against a ruler: distance from the seed alone gives ρ = 0.65 (difference 95% CI [-0.24, +0.23]); both together give 0.73, with partial ρ 0.52 for the connectome after controlling for distance. <a href="https://github.com/OluwatobaOyagbemi/connectome-spread/blob/main/reproduce.py"><code>reproduce.py</code></a> regenerates every number on this page.</p>
       </div>
       <div class="result">
         <div class="num">0.64<small>Spearman ρ, arrival order vs Braak stage, ε3/ε3</small></div>

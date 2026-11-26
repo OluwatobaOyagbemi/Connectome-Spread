@@ -68,11 +68,17 @@ def simulate(W: np.ndarray, seed_idx: list[int], genotype: str,
 
     x = np.zeros(n)
     history = [x.copy()]
-    for _ in range(p.steps):
-        dx = -beta * (L @ x) - kappa * x + seed
-        x = np.maximum(x + p.dt * dx, 0.0)
-        history.append(x.copy())
-    return np.array(history)
+    # numpy 2.0 with macOS Accelerate raises spurious floating-point warnings
+    # from matmul even on finite input; silence them and check the result instead.
+    with np.errstate(all="ignore"):
+        for _ in range(p.steps):
+            dx = -beta * (L @ x) - kappa * x + seed
+            x = np.maximum(x + p.dt * dx, 0.0)
+            history.append(x.copy())
+    history = np.array(history)
+    if not np.isfinite(history).all():
+        raise FloatingPointError("simulation diverged; reduce beta or dt")
+    return history
 
 
 def arrival_order(history: np.ndarray, threshold: float = 0.1) -> np.ndarray:
