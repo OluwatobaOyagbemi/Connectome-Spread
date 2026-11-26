@@ -10,6 +10,7 @@ from connectome import (hcp_connectome, synthetic_connectome, load_csv_connectom
 from model import (APOE_PROFILES, Params, simulate, arrival_order, braak_stages,
                    braak_concordance, beta_sweep)
 from validation import (shuffled_braak_null, rewired_connectome_null, seed_control,
+                        geometry_preserving_null, connectome_vs_distance,
                         threshold_control)
 from analysis import seed_scan, seed_stage_trend, knockout_scan
 
@@ -119,6 +120,22 @@ def run_controls(W: np.ndarray, seed_idx: tuple[int, ...], names: tuple[str, ...
     seeds = seed_control(W, names, p, threshold)
     thr = threshold_control(W, list(seed_idx), names, p)
     return shuf, rew, seeds, thr
+
+
+@st.cache_data(show_spinner=False)
+def run_geometry(W: np.ndarray, seed_idx: tuple[int, ...], names: tuple[str, ...],
+                 beta: float, kappa: float, steps: int, threshold: float):
+    """Distance baseline + geometry-preserving null; None if the regions have
+    no known centroids (e.g. an uploaded connectome in another atlas)."""
+    from connectome import hcp_centroids
+    try:
+        xyz = hcp_centroids(list(names))
+    except KeyError:
+        return None
+    p = Params(beta=beta, kappa=kappa, steps=steps)
+    geo = geometry_preserving_null(W, xyz, list(seed_idx), list(names), p, threshold, n=100)
+    cvd = connectome_vs_distance(W, xyz, list(seed_idx), list(names), p, threshold, n_boot=1000)
+    return geo, cvd
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -414,6 +431,55 @@ with tab_ctrl:
             st.caption(f"Null mean {null.mean:.2f}, 95th percentile {null.p95:.2f}; "
                        f"observed {null.observed:.2f}, one-sided {ptxt}.")
 
+    st.markdown("#### Does the wiring beat plain distance?")
+    st.markdown(
+        "Braak stages are laid out in space, spreading outward from the medial temporal "
+        "lobe, so anything that spreads smoothly away from the seed will correlate with "
+        "them. The rewired null above scrambles space as well as wiring, so it is easy "
+        "to beat. The harder baselines: rank regions by **straight-line distance from the "
+        "seed** (no model at all), and **rewire only among region pairs at similar "
+        "distance**, which keeps the near-strong/far-weak structure.")
+    with st.spinner("Running geometry controls…"):
+        geo_res = run_geometry(W, seed_idx, tuple(names), beta, kappa, steps, threshold)
+    if geo_res is None:
+        st.info("Region centroids are only bundled for the Desikan-Killiany atlas, so the "
+                "distance controls are unavailable for this connectome.")
+    else:
+        geo, cvd = geo_res
+        r, pc = cvd["rho"], cvd["partial"]
+        lo, hi = cvd["ci_connectome_minus_distance"]
+        clo, chi = cvd["ci_combined_minus_distance"]
+        g1, g2 = st.columns(2)
+        with g1:
+            fig = go.Figure(go.Bar(
+                x=["connectome diffusion", "distance from seed", "both (rank sum)"],
+                y=[r["connectome"], r["distance"], r["combined"]],
+                marker_color=["#2a78d6", "#a3a8b0", "#6250d6"],
+                text=[f"{v:.2f}" for v in (r["connectome"], r["distance"], r["combined"])],
+                textposition="outside", hovertemplate="%{x}: ρ %{y:.2f}<extra></extra>"))
+            fig.add_hline(y=geo.p95, line=dict(color=INK, width=1, dash="dot"),
+                          annotation_text=f"geometry-preserving null p95 = {geo.p95:.2f}",
+                          annotation_position="bottom right", annotation_font_size=11)
+            fig.update_layout(**base_layout(300, yaxis_title="Braak concordance ρ",
+                              showlegend=False))
+            fig.update_yaxes(range=[min(0, r["distance"]) - 0.05, 1])
+            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+        with g2:
+            ptxt = "p < 0.001" if geo.p_value < 0.001 else f"p = {geo.p_value:.3f}"
+            st.markdown(
+                f"- **Distance alone** gives ρ = {r['distance']:.2f} against the connectome's "
+                f"{r['connectome']:.2f}. Difference, 95% CI [{lo:+.2f}, {hi:+.2f}] "
+                "(bootstrap over bilateral region pairs).\n"
+                f"- **Geometry-preserving rewire**: null mean {geo.mean:.2f}, 95th percentile "
+                f"{geo.p95:.2f}, one-sided {ptxt}.\n"
+                f"- The two orders agree only weakly (ρ = {cvd['order_agreement']:.2f}). "
+                f"Controlling for distance, the connectome still predicts Braak stage "
+                f"(partial ρ = {pc['connectome | distance']:.2f}).\n"
+                f"- Adding the two rank orders, unweighted, gives ρ = {r['combined']:.2f}; "
+                f"gain over distance, 95% CI [{clo:+.2f}, {chi:+.2f}].")
+            st.caption("Read: the wiring is not a better ruler than distance, but it carries "
+                       "Braak-relevant information that distance does not.")
+
     c3, c4 = st.columns(2)
     with c3:
         st.markdown("**Seed control** · bilateral seed, ε3/ε3")
@@ -423,7 +489,9 @@ with tab_ctrl:
         best = max(seeds, key=lambda r: r["ρ"])
         st.caption(f"Highest concordance from a **{best['seed']}** seed "
                    f"(ρ = {best['ρ']:+.2f}). Seeding late-stage regions runs the "
-                   "cascade backwards and the sign flips.")
+                   "cascade backwards and the sign flips. Distance from the seed shows "
+                   "the same pattern, so this control says more about where Braak "
+                   "staging starts than about the wiring.")
     with c4:
         st.markdown("**Threshold control** · entorhinal seed, ε3/ε3")
         st.dataframe(pd.DataFrame(thr), hide_index=True, width="stretch",
@@ -445,11 +513,13 @@ with tab_scan:
     with c1:
         st.markdown(f"**Seed scan** · every region seeded bilaterally, {genotype}")
         st.markdown(
-            "If spread follows the wiring, seeding a late-stage region should give a "
-            "*worse* match to Braak order, not just a different one. It does: the "
-            f"concordance a seed produces falls with the seed's own Braak stage "
-            f"(Spearman {trend_r:+.2f} across {len(scan)} seeds; early-stage seeds "
-            f"average {early_minus_late:+.2f} higher ρ than stage V/VI seeds).")
+            "Seeding a late-stage region gives a *worse* match to Braak order, not just "
+            f"a different one: the concordance a seed produces falls with the seed's own "
+            f"Braak stage (Spearman {trend_r:+.2f} across {len(scan)} seeds; early-stage "
+            f"seeds average {early_minus_late:+.2f} higher ρ than stage V/VI seeds). "
+            "Straight-line distance from each seed produces nearly the same trend and "
+            "also ranks entorhinal first, so this shows the geometry of Braak staging "
+            "more than a property of the wiring.")
         fig = go.Figure()
         for stage, grp in scan.groupby("seed Braak stage"):
             fig.add_trace(go.Scatter(

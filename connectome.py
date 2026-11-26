@@ -100,6 +100,18 @@ def hcp_connectome() -> pd.DataFrame:
     return load_csv_connectome(path)
 
 
+def hcp_centroids(names: list[str] | None = None) -> np.ndarray:
+    """(x, y, z) centroid in fsaverage millimetres for each DK-68 region, in the
+    order of `names` (default: the HCP connectome's order). Built from ENIGMA's
+    fsaverage5 surfaces by data/make_centroids.py."""
+    df = pd.read_csv(Path(__file__).parent / "data" / "dk68_centroids.csv", index_col=0)
+    names = list(hcp_connectome().index) if names is None else names
+    missing = set(names) - set(df.index)
+    if missing:
+        raise KeyError(f"no centroid for {sorted(missing)}")
+    return df.loc[names, ["x", "y", "z"]].to_numpy(float)
+
+
 def load_csv_connectome(file) -> pd.DataFrame:
     """Read a connectome CSV with region labels in the header row and first column."""
     df = pd.read_csv(file, index_col=0)
@@ -111,3 +123,32 @@ def load_csv_connectome(file) -> pd.DataFrame:
     W = (W + W.T) / 2  # force symmetry
     np.fill_diagonal(W, 0)
     return pd.DataFrame(W, index=df.index, columns=df.columns)
+
+
+ATLASES = ["dk_68", "schaefer_100", "schaefer_200", "schaefer_300", "schaefer_400",
+           "glasser_360"]
+
+
+def load_atlas(atlas: str) -> dict:
+    """Connectome plus parcel metadata for one parcellation of the same HCP data.
+
+    Returns a dict with `names`, `W` (connectome), `xyz` (centroids, mm),
+    `parent` (Desikan-Killiany region each parcel mostly overlaps; for dk_68 the
+    region itself) and `entorhinal_fraction`. Finer atlases are built by
+    data/make_atlases.py.
+    """
+    if atlas == "dk_68":
+        conn = hcp_connectome()
+        names = list(conn.index)
+        return {"names": names, "W": conn.values, "xyz": hcp_centroids(names),
+                "parent": names,
+                "entorhinal_fraction": np.array([n.endswith("_entorhinal") for n in names], float)}
+    if atlas not in ATLASES:
+        raise KeyError(f"unknown atlas {atlas!r}; choose from {ATLASES}")
+    base = Path(__file__).parent / "data" / "atlases"
+    conn = load_csv_connectome(base / f"{atlas}_sc.csv")
+    meta = pd.read_csv(base / f"{atlas}_parcels.csv", index_col=0).loc[list(conn.index)]
+    return {"names": list(conn.index), "W": conn.values,
+            "xyz": meta[["x", "y", "z"]].to_numpy(float),
+            "parent": list(meta["parent_dk"]),
+            "entorhinal_fraction": meta["entorhinal_fraction"].to_numpy(float)}

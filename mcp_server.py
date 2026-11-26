@@ -23,10 +23,11 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
 from analysis import knockout_scan, seed_scan, seed_stage_trend
-from connectome import hcp_connectome, region_lobe
+from connectome import hcp_centroids, hcp_connectome, region_lobe
 from model import (APOE_PROFILES, Params, arrival_order, beta_sweep, braak_concordance,
                    braak_stages, simulate)
-from validation import rewired_connectome_null, shuffled_braak_null
+from validation import (connectome_vs_distance, geometry_preserving_null,
+                        rewired_connectome_null, shuffled_braak_null)
 
 server = MCPServer(
     "connectome-spread",
@@ -36,7 +37,10 @@ server = MCPServer(
         "'L_entorhinal'; seeds are given by base name ('entorhinal' = both "
         "hemispheres). Braak concordance ρ is Spearman correlation between simulated "
         "arrival order and Braak tau stage (1 = perfect Braak order). Time steps are "
-        "dimensionless. APOE multipliers are illustrative assumptions, not fitted."
+        "dimensionless. APOE multipliers are illustrative assumptions, not fitted. "
+        "Caveat: straight-line distance from the entorhinal seed predicts Braak order "
+        "about as well as the connectome does (run_controls reports both); the wiring "
+        "adds information beyond distance but does not beat it on its own."
     ),
 )
 
@@ -44,6 +48,7 @@ _CONN = hcp_connectome()
 NAMES: list[str] = list(_CONN.index)
 W: np.ndarray = _CONN.values
 STAGES = braak_stages(NAMES)
+XYZ = hcp_centroids(NAMES)
 ROMAN = {1: "I", 3: "III", 4: "IV", 5: "V", 6: "VI"}
 
 
@@ -145,17 +150,29 @@ def sweep_beta(seed: str = "entorhinal", kappa: float = 0.01, steps: int = 300,
 def run_controls(seed: str = "entorhinal", beta: float = 0.05, kappa: float = 0.01,
                  steps: int = 300, threshold: float = 0.10,
                  n_shuffle: int = 1000, n_rewire: int = 50) -> dict:
-    """Is the Braak concordance better than chance? Shuffled-Braak-label null and
-    rewired-connectome null (ε3/ε3), each with mean, 95th percentile and one-sided p."""
+    """Is the Braak concordance better than chance, and better than geometry?
+    Shuffled-Braak-label null, rewired-connectome null and geometry-preserving
+    null (ε3/ε3), each with mean, 95th percentile and one-sided p; plus the
+    distance baseline: ρ for straight-line distance from the seed, for both
+    combined, partial correlations, and a bootstrap CI on the difference."""
     idx = _seed_idx(seed)
     p = Params(beta=beta, kappa=kappa, steps=steps)
     arr = arrival_order(simulate(W, idx, "ε3/ε3", p), threshold)
     shuf = shuffled_braak_null(arr, STAGES, n=n_shuffle)
     rew = rewired_connectome_null(W, idx, NAMES, p, threshold, n=n_rewire)
+    geo = geometry_preserving_null(W, XYZ, idx, NAMES, p, threshold, n=n_rewire)
+    cvd = connectome_vs_distance(W, XYZ, idx, NAMES, p, threshold, n_boot=1000)
     f = lambda r: {"mean": round(r.mean, 3), "p95": round(r.p95, 3), "p": round(r.p_value, 4)}
+    r3 = lambda d: {k: round(float(v), 3) for k, v in d.items()}
     return {"observed_rho": round(shuf.observed, 3),
             "shuffled_braak_null": {"n": n_shuffle, **f(shuf)},
-            "rewired_connectome_null": {"n": n_rewire, **f(rew)}}
+            "rewired_connectome_null": {"n": n_rewire, **f(rew)},
+            "geometry_preserving_null": {"n": n_rewire, **f(geo)},
+            "distance_baseline": {
+                "rho": r3(cvd["rho"]), "order_agreement": round(cvd["order_agreement"], 3),
+                "partial_rho": r3(cvd["partial"]),
+                "ci95_connectome_minus_distance": [round(v, 3) for v in cvd["ci_connectome_minus_distance"]],
+                "ci95_combined_minus_distance": [round(v, 3) for v in cvd["ci_combined_minus_distance"]]}}
 
 
 @server.tool()

@@ -81,12 +81,17 @@ def main() -> None:
         R = json.loads(RESULTS.read_text())
         s, w = R["shuffled_braak_null"], R["rewired_connectome_null"]
         seeds = {r["seed"]: r["ρ"] for r in R["seed_control"]}
+        g = R["geometry_preserving_null"]
+        c = R["connectome_vs_distance"][str(THRESHOLD)]
+        lo, hi = c["ci_connectome_minus_distance"]
         para = (f'<p id="controls">Against chance: shuffling the Braak labels gives a 95th-percentile '
-                f'ρ of {s["p95"]:.2f} ({s["n"]:,} permutations), and rewiring the connectome with the same '
-                f'density and weights gives {w["p95"]:.2f} ({w["n"]} graphs). Moving the seed breaks it: '
-                f'fusiform {seeds["fusiform"]:+.2f}, superior parietal {seeds["superiorparietal"]:+.2f}, '
-                f'precentral {seeds["precentral"]:+.2f}. Only the entorhinal start, where Braak staging '
-                f'begins, produces Braak order. <a href="https://github.com/OluwatobaOyagbemi/connectome-spread/blob/main/reproduce.py">'
+                f'ρ of {s["p95"]:.2f} ({s["n"]:,} permutations). Against geometry: rewiring the connectome '
+                f'only among region pairs at similar distance gives {g["p95"]:.2f} ({g["n"]} graphs), which '
+                f'the real wiring beats. Against a ruler: distance from the seed alone gives '
+                f'ρ = {c["rho"]["distance"]:.2f} (difference 95% CI [{lo:+.2f}, {hi:+.2f}]); both together give '
+                f'{c["rho"]["combined"]:.2f}, with partial ρ {c["partial"]["connectome | distance"]:.2f} for the '
+                f'connectome after controlling for distance. '
+                f'<a href="https://github.com/OluwatobaOyagbemi/connectome-spread/blob/main/reproduce.py">'
                 f'<code>reproduce.py</code></a> regenerates every number on this page.</p>')
         if '<p id="controls">' in html:
             html = re.sub(r'<p id="controls">.*?</p>', para, html, flags=re.S)

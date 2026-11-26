@@ -1,9 +1,10 @@
 """Two analyses that go beyond reproducing the published model.
 
 1. Seed scan — seed every region in turn and ask how Braak concordance depends
-   on where the cascade starts. If ρ falls off with the seed's own Braak stage,
-   the model is saying the entorhinal origin is not just one good choice but the
-   only region from which the wiring reproduces the clinical order.
+   on where the cascade starts. ρ falls off with the seed's own Braak stage and
+   entorhinal comes first, but straight-line distance from each seed does the
+   same (pass `xyz` to see it), so this alone does not show the wiring is what
+   singles out the clinical origin.
 
 2. Knockout scan — remove one region at a time (zero its row and column, i.e. a
    virtual lesion) and re-run from the entorhinal seed. Regions whose removal
@@ -30,9 +31,12 @@ def _label(s: float) -> str:
 
 
 def seed_scan(W: np.ndarray, names: list[str], p: Params, threshold: float,
-              genotype: str = "ε3/ε3", bilateral: bool = True) -> pd.DataFrame:
+              genotype: str = "ε3/ε3", bilateral: bool = True,
+              xyz: np.ndarray | None = None) -> pd.DataFrame:
     """Braak concordance for every possible seed. With `bilateral`, each base
-    region (e.g. 'entorhinal') is seeded in both hemispheres and reported once."""
+    region (e.g. 'entorhinal') is seeded in both hemispheres and reported once.
+    With `xyz` (region centroids), also reports 'ρ (distance)': the concordance
+    of plain Euclidean distance from that seed, the no-wiring baseline."""
     stages = braak_stages(names)
     rows = []
     if bilateral:
@@ -50,21 +54,24 @@ def seed_scan(W: np.ndarray, names: list[str], p: Params, threshold: float,
             "regions reached": int(np.isfinite(a).sum()),
             "ρ": braak_concordance(a, stages),
         })
+        if xyz is not None:
+            d = np.linalg.norm(xyz[:, None] - xyz[None], axis=-1)[:, idx].min(axis=1)
+            rows[-1]["ρ (distance)"] = braak_concordance(d, stages)
     df = pd.DataFrame(rows).sort_values("ρ", ascending=False).reset_index(drop=True)
     df.index = df.index + 1
     return df
 
 
-def seed_stage_trend(scan: pd.DataFrame) -> tuple[float, float]:
+def seed_stage_trend(scan: pd.DataFrame, column: str = "ρ") -> tuple[float, float]:
     """Spearman correlation between a seed's Braak stage and the ρ it produces,
     and the mean ρ for stage-I/III seeds vs stage-V/VI seeds."""
     d = scan.dropna(subset=["seed stage (num)"])
     from model import _rank
-    x, y = _rank(d["seed stage (num)"].to_numpy()), _rank(d["ρ"].to_numpy())
+    x, y = _rank(d["seed stage (num)"].to_numpy()), _rank(d[column].to_numpy())
     x, y = x - x.mean(), y - y.mean()
     r = float((x * y).sum() / np.sqrt((x ** 2).sum() * (y ** 2).sum()))
-    early = d[d["seed stage (num)"] <= 3]["ρ"].mean()
-    late = d[d["seed stage (num)"] >= 5]["ρ"].mean()
+    early = d[d["seed stage (num)"] <= 3][column].mean()
+    late = d[d["seed stage (num)"] >= 5][column].mean()
     return r, float(early - late)
 
 

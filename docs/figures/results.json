@@ -50,6 +50,56 @@
     "p95": 0.29,
     "p": 0.005
   },
+  "geometry_preserving_null": {
+    "n": 500,
+    "mean": 0.41,
+    "p95": 0.56,
+    "p": 0.002
+  },
+  "connectome_vs_distance": {
+    "0.1": {
+      "rho": {
+        "connectome": 0.638,
+        "distance": 0.649,
+        "combined": 0.729
+      },
+      "order_agreement": 0.437,
+      "partial": {
+        "connectome | distance": 0.518,
+        "distance | connectome": 0.534
+      },
+      "ci_connectome_minus_distance": [
+        -0.24,
+        0.228
+      ],
+      "ci_combined_minus_distance": [
+        -0.041,
+        0.231
+      ],
+      "n_boot": 5000
+    },
+    "0.02": {
+      "rho": {
+        "connectome": 0.617,
+        "distance": 0.649,
+        "combined": 0.757
+      },
+      "order_agreement": 0.331,
+      "partial": {
+        "connectome | distance": 0.56,
+        "distance | connectome": 0.598
+      },
+      "ci_connectome_minus_distance": [
+        -0.297,
+        0.221
+      ],
+      "ci_combined_minus_distance": [
+        -0.058,
+        0.287
+      ],
+      "n_boot": 5000
+    }
+  },
   "seed_control": [
     {
       "seed": "entorhinal",
@@ -102,6 +152,9 @@
   "seed_scan": {
     "trend_spearman": -0.69,
     "early_minus_late": 0.52,
+    "distance_trend_spearman": -0.62,
+    "distance_early_minus_late": 0.45,
+    "distance_best_seed": "entorhinal",
     "top": [
       [
         "entorhinal",
@@ -192,6 +245,310 @@
         "VI",
         0.038
       ]
+    ]
+  },
+  "resolution": [
+    {
+      "atlas": "dk_68",
+      "n_parcels": 68,
+      "seed": [
+        "L_entorhinal",
+        "R_entorhinal"
+      ],
+      "seed_entorhinal_fraction": [
+        1.0,
+        1.0
+      ],
+      "rho": {
+        "connectome": 0.579,
+        "distance": 0.649,
+        "combined": 0.736
+      },
+      "order_agreement": 0.285,
+      "partial": {
+        "connectome | distance": 0.54,
+        "distance | connectome": 0.619
+      },
+      "ci_connectome_minus_distance": [
+        -0.319,
+        0.188
+      ],
+      "ci_combined_minus_distance": [
+        -0.073,
+        0.266
+      ],
+      "n_boot": 2000,
+      "geometry_null": {
+        "n": 200,
+        "mean": 0.429,
+        "p95": 0.554,
+        "p": 0.025
+      }
+    },
+    {
+      "atlas": "schaefer_100",
+      "n_parcels": 100,
+      "seed": [
+        "7Networks_LH_Limbic_TempPole_1",
+        "7Networks_RH_Limbic_TempPole_1"
+      ],
+      "seed_entorhinal_fraction": [
+        0.16,
+        0.12
+      ],
+      "rho": {
+        "connectome": 0.487,
+        "distance": 0.443,
+        "combined": 0.562
+      },
+      "order_agreement": 0.275,
+      "partial": {
+        "connectome | distance": 0.423,
+        "distance | connectome": 0.368
+      },
+      "ci_connectome_minus_distance": [
+        -0.421,
+        0.388
+      ],
+      "ci_combined_minus_distance": [
+        -0.142,
+        0.319
+      ],
+      "n_boot": 2000,
+      "geometry_null": {
+        "n": 200,
+        "mean": 0.198,
+        "p95": 0.37,
+        "p": 0.005
+      }
+    },
+    {
+      "atlas": "schaefer_200",
+      "n_parcels": 200,
+      "seed": [
+        "7Networks_LH_Limbic_TempPole_1",
+        "7Networks_RH_Limbic_TempPole_3"
+      ],
+      "seed_entorhinal_fraction": [
+        0.37,
+        0.35
+      ],
+      "rho": {
+        "connectome": 0.519,
+        "distance": 0.536,
+        "combined": 0.619
+      },
+      "order_agreement": 0.34,
+      "partial": {
+        "connectome | distance": 0.424,
+        "distance | connectome": 0.448
+      },
+      "ci_connectome_minus_distance": [
+        -0.376,
+        0.252
+      ],
+      "ci_combined_minus_distance": [
+        -0.113,
+        0.229
+      ],
+      "n_boot": 2000,
+      "geometry_null": {
+        "n": 200,
+        "mean": 0.271,
+        "p95": 0.406,
+        "p": 0.005
+      }
+    },
+    {
+      "atlas": "schaefer_300",
+      "n_parcels": 300,
+      "seed": [
+        "7Networks_LH_Limbic_TempPole_1",
+        "7Networks_RH_Limbic_TempPole_3"
+      ],
+      "seed_entorhinal_fraction": [
+        0.31,
+        0.46
+      ],
+      "rho": {
+        "connectome": 0.579,
+        "distance": 0.515,
+        "combined": 0.649
+      },
+      "order_agreement": 0.341,
+      "partial": {
+        "connectome | distance": 0.5,
+        "distance | connectome": 0.414
+      },
+      "ci_connectome_minus_distance": [
+        -0.333,
+        0.34
+      ],
+      "ci_combined_minus_distance": [
+        -0.078,
+        0.283
+      ],
+      "n_boot": 2000,
+      "geometry_null": {
+        "n": 200,
+        "mean": 0.283,
+        "p95": 0.413,
+        "p": 0.005
+      }
+    },
+    {
+      "atlas": "schaefer_400",
+      "n_parcels": 400,
+      "seed": [
+        "7Networks_LH_Limbic_TempPole_3",
+        "7Networks_RH_Limbic_TempPole_1"
+      ],
+      "seed_entorhinal_fraction": [
+        0.58,
+        0.39
+      ],
+      "rho": {
+        "connectome": 0.578,
+        "distance": 0.486,
+        "combined": 0.627
+      },
+      "order_agreement": 0.355,
+      "partial": {
+        "connectome | distance": 0.496,
+        "distance | connectome": 0.368
+      },
+      "ci_connectome_minus_distance": [
+        -0.295,
+        0.367
+      ],
+      "ci_combined_minus_distance": [
+        -0.068,
+        0.294
+      ],
+      "n_boot": 2000,
+      "geometry_null": {
+        "n": 200,
+        "mean": 0.271,
+        "p95": 0.383,
+        "p": 0.005
+      }
+    },
+    {
+      "atlas": "glasser_360",
+      "n_parcels": 360,
+      "seed": [
+        "L_EC",
+        "R_PeEc"
+      ],
+      "seed_entorhinal_fraction": [
+        0.42,
+        0.44
+      ],
+      "rho": {
+        "connectome": 0.472,
+        "distance": 0.502,
+        "combined": 0.607
+      },
+      "order_agreement": 0.234,
+      "partial": {
+        "connectome | distance": 0.421,
+        "distance | connectome": 0.457
+      },
+      "ci_connectome_minus_distance": [
+        -0.38,
+        0.264
+      ],
+      "ci_combined_minus_distance": [
+        -0.087,
+        0.274
+      ],
+      "n_boot": 2000,
+      "geometry_null": {
+        "n": 200,
+        "mean": 0.337,
+        "p95": 0.421,
+        "p": 0.005
+      }
+    }
+  ],
+  "resolution_seed_sensitivity": {
+    "schaefer_100": [
+      {
+        "seed definition": "default",
+        "n seeds": 2,
+        "connectome": 0.487,
+        "distance": 0.443,
+        "combined": 0.562,
+        "partial": 0.423
+      },
+      {
+        "seed definition": "top-2 entorhinal parcels per hemisphere",
+        "n seeds": 4,
+        "connectome": 0.5,
+        "distance": 0.551,
+        "combined": 0.595,
+        "partial": 0.324
+      },
+      {
+        "seed definition": "every parcel ≥10% entorhinal",
+        "n seeds": 2,
+        "connectome": 0.487,
+        "distance": 0.443,
+        "combined": 0.562,
+        "partial": 0.423
+      }
+    ],
+    "schaefer_400": [
+      {
+        "seed definition": "default",
+        "n seeds": 2,
+        "connectome": 0.578,
+        "distance": 0.486,
+        "combined": 0.627,
+        "partial": 0.496
+      },
+      {
+        "seed definition": "top-2 entorhinal parcels per hemisphere",
+        "n seeds": 4,
+        "connectome": 0.593,
+        "distance": 0.512,
+        "combined": 0.631,
+        "partial": 0.469
+      },
+      {
+        "seed definition": "every parcel ≥10% entorhinal",
+        "n seeds": 5,
+        "connectome": 0.59,
+        "distance": 0.532,
+        "combined": 0.641,
+        "partial": 0.459
+      }
+    ],
+    "glasser_360": [
+      {
+        "seed definition": "default",
+        "n seeds": 2,
+        "connectome": 0.472,
+        "distance": 0.502,
+        "combined": 0.607,
+        "partial": 0.421
+      },
+      {
+        "seed definition": "top-2 entorhinal parcels per hemisphere",
+        "n seeds": 4,
+        "connectome": 0.503,
+        "distance": 0.5,
+        "combined": 0.611,
+        "partial": 0.437
+      },
+      {
+        "seed definition": "every parcel ≥10% entorhinal",
+        "n seeds": 4,
+        "connectome": 0.503,
+        "distance": 0.5,
+        "combined": 0.611,
+        "partial": 0.437
+      }
     ]
   },
   "beta_window": {
