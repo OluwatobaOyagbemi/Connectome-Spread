@@ -23,3 +23,10 @@ connectomes for Schaefer 100/200/300/400 and Glasser 360 (ENIGMA Toolbox,
 license as above), plus per-parcel centroid, parent Desikan-Killiany region
 (majority vertex overlap on fsaverage5) and entorhinal fraction. Built by
 `make_atlases.py`; used by `resolution.py`.
+
+`ahba_dk34_lh.csv.gz` — Allen Human Brain Atlas microarray expression (Hawrylycz
+et al., *Nature* 2012) for 12,668 genes in the 34 left-hemisphere regions, scaled
+0–1 per gene, as distributed by the ENIGMA Toolbox extras
+(`saratheriver/enigma-extra`, `ahba/allgenes_stable_r0.2.csv`). `dk34_lh_sphere.csv`
+— each left region's centroid on the fsaverage5 sphere, for spin tests. Both
+built by `make_expression.py`; used by `vulnerability.py`.
