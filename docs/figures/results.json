@@ -551,6 +551,50 @@
       }
     ]
   },
+  "vulnerability": {
+    "MAPT": {
+      "gene": "MAPT",
+      "n_regions": 34,
+      "rho": 0.268,
+      "spin_p": 0.1,
+      "genome_percentile": 74.732,
+      "partial": 0.398,
+      "spin_p_partial": 0.023,
+      "genome_percentile_partial": 97.932,
+      "connectome_plus_distance": 0.741,
+      "with_gene": 0.788,
+      "ci_gain": [
+        -0.109,
+        0.238
+      ],
+      "jackknife_partial": [
+        0.319,
+        0.518
+      ],
+      "n_spins": 5000
+    },
+    "APOE": {
+      "gene": "APOE",
+      "n_regions": 34,
+      "rho": 0.57,
+      "spin_p": 0.016,
+      "genome_percentile": 95.572,
+      "partial": 0.314,
+      "spin_p_partial": 0.079,
+      "genome_percentile_partial": 93.519,
+      "connectome_plus_distance": 0.741,
+      "with_gene": 0.812,
+      "ci_gain": [
+        -0.066,
+        0.25
+      ],
+      "jackknife_partial": [
+        0.238,
+        0.47
+      ],
+      "n_spins": 5000
+    }
+  },
   "beta_window": {
     "min": 0.01,
     "max": 0.19,

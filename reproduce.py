@@ -23,6 +23,8 @@ from validation import (shuffled_braak_null, rewired_connectome_null, seed_contr
                         threshold_control, geometry_preserving_null, connectome_vs_distance)
 from analysis import seed_scan, seed_stage_trend, knockout_scan
 from resolution import resolution_series, seed_sensitivity
+from vulnerability import (load_expression, predictors, spin_permutations, genome_scan,
+                           gene_vs_braak)
 
 ROOT = Path(__file__).parent
 FIG_DIR = ROOT / "docs" / "figures"
@@ -134,6 +136,24 @@ def main(quick: bool = False) -> dict:
             f"{r['seed definition']} ({r['n seeds']}): conn {r['connectome']:.2f} dist {r['distance']:.2f} "
             f"partial {r['partial']:.2f}" for r in rows))
 
+    # ── 7. Regional vulnerability: gene expression beyond wiring + distance ──
+    expr, Pv = load_expression(), predictors()
+    perms = spin_permutations(n=500 if quick else 5000)
+    genome = genome_scan(expr, Pv)
+    genes = {g: gene_vs_braak(g, expr, Pv, perms, genome, n_boot=500 if quick else 5000)
+             for g in ("MAPT", "APOE")}
+    print(f"\nGene expression vs Braak order (34 left-hemisphere regions, {len(perms)} spins, "
+          f"{len(genome['genes']):,} genes)")
+    print(f"  connectome + distance alone: ρ = {genes['MAPT']['connectome_plus_distance']:.2f}")
+    for g, r in genes.items():
+        lo, hi = r["ci_gain"]
+        jlo, jhi = r["jackknife_partial"]
+        print(f"  {g:5} alone ρ {r['rho']:+.2f} (spin p {r['spin_p']:.3f}, genome pct {r['genome_percentile']:.0f}) | "
+              f"beyond wiring+distance ρ {r['partial']:+.2f} (spin p {r['spin_p_partial']:.3f}, "
+              f"genome pct {r['genome_percentile_partial']:.0f}, jackknife [{jlo:.2f}, {jhi:.2f}])")
+        print(f"        adding {g}: {r['connectome_plus_distance']:.2f} → {r['with_gene']:.2f}, "
+              f"gain 95% CI [{lo:+.2f}, {hi:+.2f}]")
+
     results = {
         "defaults": {"beta": p.beta, "kappa": p.kappa, "steps": p.steps,
                      "threshold": THRESHOLD, "seed": "bilateral entorhinal"},
@@ -159,6 +179,7 @@ def main(quick: bool = False) -> dict:
                         "largest_gains": [(r.removed, r["Braak stage"], round(r["Δρ"], 3)) for _, r in ko.tail(3).iterrows()]},
         "resolution": [_round({k: v for k, v in r.items()}) for r in res],
         "resolution_seed_sensitivity": {a: [_round(r) for r in rows] for a, rows in sens.items()},
+        "vulnerability": {g: _round(r) for g, r in genes.items()},
         "beta_window": {"min": float(win.min()), "max": float(win.max()),
                         "peak": float(peak), "peak_rho": round(float(np.nanmax(sweep["ε3/ε3"])), 2)},
     }
@@ -167,8 +188,9 @@ def main(quick: bool = False) -> dict:
     make_figure(names, hists["ε3/ε3"], a_ref, stages, shuf, rew, geo, cvd[THRESHOLD],
                 FIG_DIR / "validation.png")
     make_resolution_figure(res, FIG_DIR / "resolution.png")
+    make_vulnerability_figure(genome, genes, perms, expr, Pv, FIG_DIR / "vulnerability.png")
     print(f"\nWrote {FIG_DIR / 'results.json'}, {FIG_DIR / 'validation.png'} and "
-          f"{FIG_DIR / 'resolution.png'}")
+          f"{FIG_DIR / 'resolution.png'} and vulnerability.png")
     return results
 
 
@@ -249,6 +271,50 @@ def make_figure(names, hist, arrival, stages, shuf, rew, geo, cvd, out: Path) ->
     ax.set_title("D  Wiring vs distance", loc="left", fontsize=11, color=ink)
     ax.text(0.5, 0.86, f"connectome − distance\n95% CI [{lo:+.2f}, {hi:+.2f}]", fontsize=8,
             color=ink, ha="center", transform=ax.transAxes)
+
+    for ax in axes:
+        for sp in ("top", "right"):
+            ax.spines[sp].set_visible(False)
+        for sp in ("left", "bottom"):
+            ax.spines[sp].set_color(grid)
+        ax.tick_params(colors=ink, labelsize=9)
+        ax.yaxis.label.set_color(ink); ax.xaxis.label.set_color(ink)
+    fig.tight_layout()
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
+def make_vulnerability_figure(genome, genes, perms, expr, P, out: Path) -> None:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from vulnerability import partial_spearman
+
+    ink, grid = "#52514e", "#d5dce5"
+    col = {"MAPT": "#e34948", "APOE": "#eda100"}
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.2))
+    fig.patch.set_facecolor("white")
+
+    ax = axes[0]
+    ax.hist(genome["partial"], bins=60, color="#cfe0f7", edgecolor="white")
+    for g, r in genes.items():
+        ax.axvline(r["partial"], color=col[g], lw=2)
+        ax.text(r["partial"] + 0.01, ax.get_ylim()[1] * (0.92 if g == "MAPT" else 0.78),
+                f"{g}  {r['genome_percentile_partial']:.0f}th pct", color=col[g], fontsize=9)
+    ax.set_xlabel("partial ρ with Braak order, controlling wiring + distance")
+    ax.set_ylabel("genes")
+    ax.set_title(f"A  All {len(genome['genes']):,} stable genes", loc="left", fontsize=11, color=ink)
+
+    ax = axes[1]
+    x = -expr.loc[P["names"], "MAPT"].to_numpy()
+    null = [partial_spearman(x[q], P["stages"], [P["connectome"], P["distance"]]) for q in perms]
+    r = genes["MAPT"]
+    ax.hist(null, bins=50, color="#e6e8ec", edgecolor="white")
+    ax.axvline(r["partial"], color=col["MAPT"], lw=2)
+    ax.text(r["partial"] - 0.02, ax.get_ylim()[1] * 0.9, f"observed\np = {r['spin_p_partial']:.3f}",
+            color=col["MAPT"], fontsize=9, ha="right")
+    ax.set_xlabel("partial ρ of the rotated MAPT map")
+    ax.set_title(f"B  MAPT vs {len(perms):,} spatial rotations of itself", loc="left", fontsize=11, color=ink)
 
     for ax in axes:
         for sp in ("top", "right"):

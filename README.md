@@ -189,6 +189,10 @@ threshold 0.10.
   Glasser 360 from the same ENIGMA Toolbox and pipeline, with parcel centroids
   and parent Desikan-Killiany regions computed from its fsaverage5 surface
   labels. Bundled in `data/atlases/`; regenerate with `python data/make_atlases.py`.
+- **Gene expression.** Allen Human Brain Atlas microarray data mapped to the
+  Desikan-Killiany atlas (ENIGMA Toolbox extras; genes with differential
+  stability r > 0.2), left hemisphere. Bundled in `data/ahba_dk34_lh.csv.gz`
+  with sphere centroids for spin tests; regenerate with `python data/make_expression.py`.
 - **Concordance.** Spearman ρ between simulated arrival step and Braak stage.
   Regions that never arrive are ranked last (tied); the threshold control checks
   that this does not drive the result.
@@ -213,6 +217,63 @@ your own CSV with region labels in the first row and column.
   protein, so other proteinopathies need their own staging scheme.
 - Streamlit Community Cloud sleeps after inactivity; the first visit may take a
   minute to wake.
+
+## Does gene expression explain what wiring and distance miss?
+
+Wiring and distance together reach ρ = 0.74 and still leave much of Braak order
+unexplained. One long-standing explanation is selective vulnerability: some
+regions accumulate tau because of what their cells express, not only because of
+where they sit in the network. `vulnerability.py` tests this with Allen Human
+Brain Atlas expression (Hawrylycz et al., *Nature* 2012), as mapped to these
+regions by the ENIGMA Toolbox.
+
+![MAPT ranks in the top 2% of 12,668 genes for explaining Braak order beyond wiring and distance, and beats spatial rotations of its own map](docs/figures/vulnerability.png)
+
+| | MAPT (tau; primary) | APOE (secondary) |
+|---|---|---|
+| ρ with Braak order, alone | +0.27, spin p = 0.10 | +0.57, spin p = 0.016 |
+| partial ρ, controlling wiring + distance | **+0.40, spin p = 0.023** | +0.31, spin p = 0.079 |
+| rank among 12,668 genes (partial) | 98th percentile | 94th percentile |
+| wiring + distance (0.74) plus the gene | 0.79, gain 95% CI [−0.11, +0.24] | 0.81, gain 95% CI [−0.07, +0.25] |
+
+**MAPT barely tracks Braak order by itself, but it explains part of what wiring
+and distance miss.** This fits a "spreads along the network, builds up where
+regions are vulnerable" account. The partial correlation survives dropping any
+single region (range 0.32–0.52), dropping the entorhinal seed (0.39), the
+unfiltered gene table, and other model settings (0.40–0.42).
+
+**What it does not show.** Adding MAPT does not measurably improve prediction:
+the CI on the gain spans zero. MAPT is in the top 2% of genes, not unique:
+261 genes score higher. Its standing comes from having been named in advance,
+not from beating the genome. With 34 regions and
+two genes tested, p = 0.023 is suggestive, not decisive.
+
+How it was tested, because expression maps make false positives easy:
+
+- **MAPT and APOE were chosen before looking at results**, and the sign is fixed
+  in advance: a positive ρ means higher expression in regions tau reaches first.
+- **Spin test.** Expression varies smoothly across the cortex, and the raw
+  correlation of genes with Braak order runs from −0.62 to +0.56 (5th–95th
+  percentile) on spatial gradients alone. The spin test rotates each gene's map
+  on the sphere 5,000 times, which keeps its smoothness and breaks its alignment
+  (Alexander-Bloch et al., *NeuroImage* 2018; unique reassignment after Váša et
+  al., *Cerebral Cortex* 2018).
+- **Genome rank.** Asks whether the gene is special or one of many with a
+  similar gradient.
+- **Left hemisphere only** (34 regions). Only two of the six atlas donors
+  contributed right-hemisphere samples.
+
+**Where this sits.** It replicates, on open data and in a few seconds, the
+direction of published work. Grothe et al. found regional MAPT expression tracks
+the Alzheimer's neurodegeneration pattern ([*Brain* 2018](https://doi.org/10.1093/brain/awy189)).
+Anand, Raj et al. related risk-gene expression to the tau-PET that a fitted
+network-diffusion model fails to explain, the same logic as the partial
+correlation here ([*Brain* 2025](https://doi.org/10.1093/brain/awaf179)). One
+point of tension: Xiao, Vogel et al. report that network dynamics mostly set
+*where* tau goes, while MAPT expression and other regional factors shape *how
+much* builds up ([preprint, 2026](https://doi.org/10.21203/rs.3.rs-8687892/v1)).
+Here MAPT adds information about the *order*, though Braak stage is a much
+coarser target than their regional tau-PET.
 
 ## Beyond the reproduction: two scans
 
@@ -276,7 +337,8 @@ on open data, reproducible from one script.
 - Obtain longitudinal regional tau-PET by APOE group and run `fit_apoe.py`; replace
   `APOE_PROFILES` with the fitted multipliers if they are supported
 - Lesion scan on individual connectomes, to see whether the bridge regions are stable across people
-- Add region-level vulnerability weights from gene-expression atlases (Allen Human Brain Atlas)
+- Build MAPT expression into the model as a regional vulnerability term, then test it
+  against regional tau-PET, which has the resolution to show a prediction gain
 - Add Braak II by extending to a parcellation that includes the hippocampus
 
 ## Repository
@@ -287,6 +349,7 @@ simulator.py      the Streamlit app
 model.py          diffusion model, Braak reference, concordance
 validation.py     shuffled-label, rewired and geometry-preserving nulls; distance baseline; seed and threshold controls
 resolution.py     connectome vs distance on five finer parcellations, with seed sensitivity
+vulnerability.py  gene expression vs Braak order beyond wiring + distance: spin tests, genome rank
 analysis.py       seed scan (all 34 seeds) and lesion scan (one region removed at a time)
 fit.py            fit (β, κ) to a regional tau pattern; cross-sectional and longitudinal designs
 fit_apoe.py       per-APOE-group fit with bootstrap CIs and implied multipliers
@@ -295,7 +358,7 @@ reproduce.py      prints every number in this README, writes docs/figures/
 mcp_server.py     the simulation as MCP tools for AI agents
 build_landing.py  regenerates the numbers baked into docs/index.html
 tests/            pytest regression tests for the README table and controls
-data/             HCP DK-68 connectome, region centroids, finer atlases (data/atlases/), build scripts, provenance, license
+data/             HCP DK-68 connectome, region centroids, finer atlases, gene expression, build scripts, provenance
 docs/             landing page (GitHub Pages), figures, demo video
 ```
 
